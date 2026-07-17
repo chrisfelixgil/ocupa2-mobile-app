@@ -4,6 +4,10 @@ import 'package:ocupa2/core/network/api_client.dart';
 import 'package:ocupa2/core/session/session_event_bus.dart';
 import 'package:ocupa2/core/storage/secure_storage_service.dart';
 import 'package:ocupa2/core/storage/token_storage.dart';
+import 'package:ocupa2/features/auth/data/repositories/auth_repository.dart';
+import 'package:ocupa2/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:ocupa2/features/auth/data/services/auth_service.dart';
+import 'package:ocupa2/features/auth/data/services/auth_service_impl.dart';
 import 'package:provider/provider.dart';
 
 class AppProviders extends StatelessWidget {
@@ -32,6 +36,19 @@ class AppProviders extends StatelessWidget {
           },
           dispose: (_, ApiClient apiClient) {
             apiClient.close();
+          },
+        ),
+        Provider<AuthService>(
+          create: (BuildContext context) {
+            return AuthServiceImpl(apiClient: context.read<ApiClient>());
+          },
+        ),
+        Provider<AuthRepository>(
+          create: (BuildContext context) {
+            return AuthRepositoryImpl(
+              authService: context.read<AuthService>(),
+              tokenStorage: context.read<TokenStorage>(),
+            );
           },
         ),
       ],

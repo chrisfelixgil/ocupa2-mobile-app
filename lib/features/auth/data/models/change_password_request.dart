@@ -1,4 +1,9 @@
-// File: change_password_request.dart
-// Project: Ocupa2 Mobile App
-// Description: Auto-generated structural placeholder
-// TODO: Implement logic for change_password_request.dart
+class ChangePasswordRequest {
+  const ChangePasswordRequest({required this.password});
+
+  final String password;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{'password': password};
+  }
+}

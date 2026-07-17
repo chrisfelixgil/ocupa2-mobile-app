@@ -10,6 +10,8 @@
   timeout,
   cancelled,
   badCertificate,
+  storage,
+  responseFormat,
   unknown,
 }
 
@@ -33,6 +35,10 @@ class ApiException implements Exception {
   bool get isConnectionProblem {
     return type == ApiExceptionType.connection ||
         type == ApiExceptionType.timeout;
+  }
+
+  bool get isStorageProblem {
+    return type == ApiExceptionType.storage;
   }
 
   @override
