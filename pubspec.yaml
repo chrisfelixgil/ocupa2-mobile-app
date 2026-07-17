@@ -1,4 +1,4 @@
-name: ocupa2
+﻿name: ocupa2
 description: Cliente Android de la plataforma de empleos temporales Ocupa2.
 publish_to: 'none'
 version: 1.0.0+1
@@ -28,3 +28,13 @@ flutter:
 
   assets:
     - .env
+
+  fonts:
+    - family: PlusJakartaSans
+      fonts:
+        - asset: assets/fonts/plus_jakarta_sans/PlusJakartaSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/plus_jakarta_sans/PlusJakartaSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/plus_jakarta_sans/PlusJakartaSans-Bold.ttf
+          weight: 700

@@ -20,25 +20,32 @@ abstract final class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: AppTypography.fontFamily,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.cream,
       textTheme: const TextTheme(
+        displaySmall: TextStyle(
+          color: AppColors.navy,
+          fontSize: 22,
+          fontWeight: AppTypography.bold,
+          height: 1.25,
+        ),
         headlineLarge: TextStyle(
           color: AppColors.navy,
           fontSize: 34,
-          fontWeight: AppTypography.bold,
+          fontWeight: AppTypography.medium,
           height: 1.15,
         ),
         headlineSmall: TextStyle(
           color: AppColors.navy,
           fontSize: 24,
-          fontWeight: AppTypography.bold,
+          fontWeight: AppTypography.medium,
           height: 1.2,
         ),
         titleLarge: TextStyle(
           color: AppColors.navy,
           fontSize: 20,
-          fontWeight: AppTypography.semiBold,
+          fontWeight: AppTypography.medium,
         ),
         bodyLarge: TextStyle(
           color: AppColors.navy,
@@ -61,7 +68,7 @@ abstract final class AppTheme {
         titleTextStyle: TextStyle(
           color: AppColors.cream,
           fontSize: 20,
-          fontWeight: AppTypography.bold,
+          fontWeight: AppTypography.medium,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -71,7 +78,7 @@ abstract final class AppTheme {
           minimumSize: const Size.fromHeight(52),
           textStyle: const TextStyle(
             fontSize: 16,
-            fontWeight: AppTypography.semiBold,
+            fontWeight: AppTypography.medium,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),

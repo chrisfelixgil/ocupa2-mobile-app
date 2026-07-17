@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ocupa2/app/theme/app_colors.dart';
 import 'package:ocupa2/app/theme/app_spacing.dart';
+import 'package:ocupa2/app/theme/app_typography.dart';
 
 class AuthFeedbackMessage extends StatelessWidget {
   const AuthFeedbackMessage({this.errorMessage, this.successMessage, super.key})
@@ -52,7 +53,7 @@ class AuthFeedbackMessage extends StatelessWidget {
                 message,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: foregroundColor,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: AppTypography.medium,
                 ),
               ),
             ),
