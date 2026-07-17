@@ -1,5 +1,7 @@
-﻿// File: token_storage.dart
-// Project: Ocupa2 Mobile App
-// Description: Auto-generated structural placeholder
-// TODO: Implement logic for token_storage.dart
+﻿abstract interface class TokenStorage {
+  Future<void> saveToken(String token);
 
+  Future<String?> readToken();
+
+  Future<void> deleteToken();
+}

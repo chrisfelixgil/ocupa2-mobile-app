@@ -1,0 +1,1 @@
+enum RequestAuth { public, protected }
