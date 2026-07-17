@@ -67,8 +67,9 @@ class _LoginViewState extends State<LoginView> {
       icon: Icons.lock_outline_rounded,
       title: 'Inicia sesión en Ocupa2',
       subtitle: 'Accede con tu correo electrónico y contraseña.',
-      footer: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      footer: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: <Widget>[
           const Text('¿No tienes una cuenta?'),
           TextButton(

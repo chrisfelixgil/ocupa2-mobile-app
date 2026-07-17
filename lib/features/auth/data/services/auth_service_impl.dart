@@ -13,8 +13,7 @@ import 'package:ocupa2/features/auth/data/models/user.dart';
 import 'package:ocupa2/features/auth/data/services/auth_service.dart';
 
 class AuthServiceImpl implements AuthService {
-  const AuthServiceImpl({required ApiClient apiClient})
-    : _apiClient = apiClient;
+  const AuthServiceImpl({required this._apiClient});
 
   final ApiClient _apiClient;
 

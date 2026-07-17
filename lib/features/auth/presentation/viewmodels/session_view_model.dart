@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:ocupa2/core/network/api_exception.dart';
@@ -10,10 +10,9 @@ import 'package:ocupa2/features/auth/presentation/viewmodels/auth_status.dart';
 
 class SessionViewModel extends ChangeNotifier {
   SessionViewModel({
-    required AuthRepository authRepository,
-    required SessionEventBus sessionEventBus,
-  }) : _authRepository = authRepository,
-       _sessionEventBus = sessionEventBus {
+    required this._authRepository,
+    required this._sessionEventBus,
+  }) {
     _sessionSubscription = _sessionEventBus.events.listen(_onSessionEvent);
   }
 
@@ -25,9 +24,12 @@ class SessionViewModel extends ChangeNotifier {
   AuthStatus _status = AuthStatus.checking;
   User? _user;
   String? _errorMessage;
+  String? _sessionActionErrorMessage;
 
   bool _isRestoring = false;
+  bool _isLoggingOut = false;
   bool _isDisposed = false;
+
   int _operationId = 0;
 
   AuthStatus get status => _status;
@@ -35,6 +37,10 @@ class SessionViewModel extends ChangeNotifier {
   User? get user => _user;
 
   String? get errorMessage => _errorMessage;
+
+  String? get sessionActionErrorMessage {
+    return _sessionActionErrorMessage;
+  }
 
   bool get isAuthenticated {
     return _status == AuthStatus.authenticated && _user != null;
@@ -44,8 +50,10 @@ class SessionViewModel extends ChangeNotifier {
     return _status == AuthStatus.checking;
   }
 
+  bool get isLoggingOut => _isLoggingOut;
+
   Future<void> restoreSession() async {
-    if (_isDisposed || _isRestoring) {
+    if (_isDisposed || _isRestoring || _isLoggingOut) {
       return;
     }
 
@@ -107,8 +115,70 @@ class SessionViewModel extends ChangeNotifier {
     }
 
     ++_operationId;
+
     _isRestoring = false;
+    _isLoggingOut = false;
+
     _setAuthenticated(user);
+  }
+
+  Future<bool> logout() async {
+    if (_isDisposed || _isLoggingOut) {
+      return false;
+    }
+
+    final AuthStatus previousStatus = _status;
+    final User? previousUser = _user;
+
+    final int currentOperation = ++_operationId;
+
+    _isRestoring = false;
+    _isLoggingOut = true;
+    _sessionActionErrorMessage = null;
+
+    _notifySafely();
+
+    try {
+      await _authRepository.clearSession();
+
+      if (!_canApplyResult(currentOperation)) {
+        return false;
+      }
+
+      _isLoggingOut = false;
+      _setUnauthenticated();
+
+      return true;
+    } on ApiException catch (error) {
+      if (!_canApplyResult(currentOperation)) {
+        return false;
+      }
+
+      _isLoggingOut = false;
+      _status = previousStatus;
+      _user = previousUser;
+      _errorMessage = null;
+      _sessionActionErrorMessage = error.message;
+
+      _notifySafely();
+
+      return false;
+    } catch (_) {
+      if (!_canApplyResult(currentOperation)) {
+        return false;
+      }
+
+      _isLoggingOut = false;
+      _status = previousStatus;
+      _user = previousUser;
+      _errorMessage = null;
+      _sessionActionErrorMessage =
+          'No fue posible cerrar la sesión. Inténtalo nuevamente.';
+
+      _notifySafely();
+
+      return false;
+    }
   }
 
   Future<void> _clearUnauthorizedSession({required int operationId}) async {
@@ -140,7 +210,9 @@ class SessionViewModel extends ChangeNotifier {
 
   Future<void> _handleExpiredSession() async {
     ++_operationId;
+
     _isRestoring = false;
+    _isLoggingOut = false;
 
     _setUnauthenticated();
 
@@ -148,7 +220,7 @@ class SessionViewModel extends ChangeNotifier {
       await _authRepository.clearSession();
     } catch (_) {
       // El interceptor ya intentó eliminar el token.
-      // La aplicación permanece sin sesión en memoria.
+      // La sesión se elimina de la memoria aunque falle un segundo intento.
     }
   }
 
@@ -160,6 +232,8 @@ class SessionViewModel extends ChangeNotifier {
     _status = AuthStatus.checking;
     _user = null;
     _errorMessage = null;
+    _sessionActionErrorMessage = null;
+
     _notifySafely();
   }
 
@@ -167,6 +241,8 @@ class SessionViewModel extends ChangeNotifier {
     _status = AuthStatus.authenticated;
     _user = user;
     _errorMessage = null;
+    _sessionActionErrorMessage = null;
+
     _notifySafely();
   }
 
@@ -174,6 +250,8 @@ class SessionViewModel extends ChangeNotifier {
     _status = AuthStatus.unauthenticated;
     _user = null;
     _errorMessage = null;
+    _sessionActionErrorMessage = null;
+
     _notifySafely();
   }
 
@@ -181,6 +259,8 @@ class SessionViewModel extends ChangeNotifier {
     _status = AuthStatus.error;
     _user = null;
     _errorMessage = message;
+    _sessionActionErrorMessage = null;
+
     _notifySafely();
   }
 

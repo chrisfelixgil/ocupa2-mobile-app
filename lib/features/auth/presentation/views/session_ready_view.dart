@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ocupa2/app/router/app_routes.dart';
 import 'package:ocupa2/app/theme/app_colors.dart';
 import 'package:ocupa2/app/theme/app_spacing.dart';
 import 'package:ocupa2/features/auth/data/models/user.dart';
@@ -8,9 +10,59 @@ import 'package:provider/provider.dart';
 class SessionReadyView extends StatelessWidget {
   const SessionReadyView({super.key});
 
+  Future<void> _requestLogout(
+    BuildContext context,
+    SessionViewModel session,
+  ) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Cerrar sesión'),
+          content: const Text(
+            '¿Estás seguro de que deseas cerrar tu sesión '
+            'en este dispositivo?',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              child: const Text('Cerrar sesión'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    final bool success = await session.logout();
+
+    if (!success && context.mounted) {
+      final String message =
+          session.sessionActionErrorMessage ??
+          'No fue posible cerrar la sesión.';
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final User? user = context.watch<SessionViewModel>().user;
+    final SessionViewModel session = context.watch<SessionViewModel>();
+
+    final User? user = session.user;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ocupa2')),
@@ -21,6 +73,7 @@ class SessionReadyView extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 560),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   const Icon(
                     Icons.verified_user_rounded,
@@ -29,7 +82,7 @@ class SessionReadyView extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   Text(
-                    'Sesión restaurada',
+                    'Sesión activa',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
@@ -49,19 +102,58 @@ class SessionReadyView extends StatelessWidget {
                   ],
                   const SizedBox(height: AppSpacing.xl),
                   Container(
-                    width: double.infinity,
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
                       color: AppColors.navy,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(
-                      'El token guardado fue validado correctamente '
-                      'mediante GET /me.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyLarge?.copyWith(color: AppColors.cream),
+                    child: Column(
+                      children: <Widget>[
+                        const Icon(
+                          Icons.security_rounded,
+                          color: AppColors.terracotta,
+                          size: 36,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          'Tu sesión fue validada mediante GET /me.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(color: AppColors.cream),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  FilledButton.icon(
+                    key: const Key('open_change_password_button'),
+                    onPressed: session.isLoggingOut
+                        ? null
+                        : () {
+                            context.pushNamed(AppRouteNames.changePassword);
+                          },
+                    icon: const Icon(Icons.password_rounded),
+                    label: const Text('Cambiar contraseña'),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  OutlinedButton.icon(
+                    key: const Key('logout_button'),
+                    onPressed: session.isLoggingOut
+                        ? null
+                        : () {
+                            _requestLogout(context, session);
+                          },
+                    icon: session.isLoggingOut
+                        ? const SizedBox(
+                            width: 19,
+                            height: 19,
+                            child: CircularProgressIndicator(strokeWidth: 2.3),
+                          )
+                        : const Icon(Icons.logout_rounded),
+                    label: Text(
+                      session.isLoggingOut
+                          ? 'Cerrando sesión...'
+                          : 'Cerrar sesión',
                     ),
                   ),
                 ],

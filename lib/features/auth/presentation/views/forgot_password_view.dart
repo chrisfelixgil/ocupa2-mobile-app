@@ -63,8 +63,9 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
       title: 'Recupera tu contraseña',
       subtitle:
           'Ingresa el correo y la matrícula de referido utilizados al crear la cuenta.',
-      footer: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      footer: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: <Widget>[
           const Text('¿Recordaste tu contraseña?'),
           TextButton(

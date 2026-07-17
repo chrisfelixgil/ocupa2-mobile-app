@@ -80,8 +80,9 @@ class _RegisterViewState extends State<RegisterView> {
       icon: Icons.person_add_alt_1_rounded,
       title: 'Crea tu cuenta',
       subtitle: 'Regístrate para publicar o solicitar empleos temporales.',
-      footer: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      footer: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: <Widget>[
           const Text('¿Ya tienes una cuenta?'),
           TextButton(

@@ -4,10 +4,9 @@ import 'package:ocupa2/core/storage/token_storage.dart';
 
 class AuthInterceptor extends Interceptor {
   AuthInterceptor({
-    required TokenStorage tokenStorage,
-    required SessionEventBus sessionEventBus,
-  }) : _tokenStorage = tokenStorage,
-       _sessionEventBus = sessionEventBus;
+    required this._tokenStorage,
+    required this._sessionEventBus,
+  });
 
   static const String requiresAuthKey = 'requiresAuth';
   static const String _authorizationHeader = 'Authorization';
@@ -53,19 +52,19 @@ class AuthInterceptor extends Interceptor {
 
   @override
   Future<void> onError(
-    DioException error,
+    DioException err,
     ErrorInterceptorHandler handler,
   ) async {
     final bool requiresAuth =
-        error.requestOptions.extra[requiresAuthKey] == true;
+        err.requestOptions.extra[requiresAuthKey] == true;
 
-    final bool isUnauthorized = error.response?.statusCode == 401;
+    final bool isUnauthorized = err.response?.statusCode == 401;
 
     if (requiresAuth && isUnauthorized) {
       await _handleUnauthorized();
     }
 
-    handler.next(error);
+    handler.next(err);
   }
 
   Future<void> _handleUnauthorized() async {

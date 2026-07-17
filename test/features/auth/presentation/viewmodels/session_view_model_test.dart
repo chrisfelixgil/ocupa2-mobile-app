@@ -128,5 +128,42 @@ void main() {
       expect(viewModel.status, AuthStatus.unauthenticated);
       expect(viewModel.errorMessage, isNull);
     });
+
+    test('logout elimina la sesión y el usuario', () async {
+      repository.hasSession = true;
+
+      viewModel.setAuthenticatedUser(repository.currentUser);
+
+      final bool result = await viewModel.logout();
+
+      expect(result, isTrue);
+      expect(viewModel.isLoggingOut, isFalse);
+      expect(viewModel.status, AuthStatus.unauthenticated);
+      expect(viewModel.user, isNull);
+      expect(repository.clearSessionCalls, 1);
+      expect(repository.hasSession, isFalse);
+    });
+
+    test('logout fallido conserva el usuario autenticado', () async {
+      repository.hasSession = true;
+
+      viewModel.setAuthenticatedUser(repository.currentUser);
+
+      repository.clearSessionError = const ApiException(
+        type: ApiExceptionType.storage,
+        message: 'No fue posible eliminar la sesión.',
+      );
+
+      final bool result = await viewModel.logout();
+
+      expect(result, isFalse);
+      expect(viewModel.isLoggingOut, isFalse);
+      expect(viewModel.status, AuthStatus.authenticated);
+      expect(viewModel.user, same(repository.currentUser));
+      expect(
+        viewModel.sessionActionErrorMessage,
+        'No fue posible eliminar la sesión.',
+      );
+    });
   });
 }

@@ -5,6 +5,7 @@ import 'package:ocupa2/app/router/route_error_view.dart';
 import 'package:ocupa2/app/router/route_paths.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/auth_status.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.dart';
+import 'package:ocupa2/features/auth/presentation/views/change_password_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/forgot_password_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/login_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/register_view.dart';
@@ -55,6 +56,13 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
         name: AppRouteNames.home,
         builder: (BuildContext context, GoRouterState state) {
           return const SessionReadyView();
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.changePassword,
+        name: AppRouteNames.changePassword,
+        builder: (BuildContext context, GoRouterState state) {
+          return const ChangePasswordView();
         },
       ),
     ],

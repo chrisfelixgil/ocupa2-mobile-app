@@ -110,7 +110,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Sesión restaurada'), findsOneWidget);
+    expect(find.text('Sesión activa'), findsOneWidget);
     expect(find.text('Christian Gil'), findsOneWidget);
     expect(find.text('usuario@itla.edu.do'), findsOneWidget);
 

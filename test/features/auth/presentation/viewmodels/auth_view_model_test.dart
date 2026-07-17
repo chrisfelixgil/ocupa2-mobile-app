@@ -123,6 +123,37 @@ void main() {
       expect(authViewModel.errorMessage, 'El correo ya está registrado.');
     });
 
+    test('cambia la contraseña y muestra mensaje del servidor', () async {
+      final bool result = await authViewModel.changePassword(
+        password: 'nuevaClave123',
+      );
+
+      expect(result, isTrue);
+      expect(authViewModel.status, AuthActionStatus.success);
+      expect(authViewModel.successMessage, 'Clave actualizada.');
+      expect(repository.changePasswordCalls, 1);
+      expect(repository.lastChangePasswordRequest?.password, 'nuevaClave123');
+    });
+
+    test('muestra error cuando falla el cambio de contraseña', () async {
+      repository.changePasswordError = const ApiException(
+        type: ApiExceptionType.validation,
+        statusCode: 422,
+        message: 'La contraseña no cumple los requisitos.',
+      );
+
+      final bool result = await authViewModel.changePassword(
+        password: 'nuevaClave123',
+      );
+
+      expect(result, isFalse);
+      expect(authViewModel.status, AuthActionStatus.error);
+      expect(
+        authViewModel.errorMessage,
+        'La contraseña no cumple los requisitos.',
+      );
+    });
+
     test('resetFeedback limpia los mensajes', () async {
       await authViewModel.forgotPassword(
         email: 'usuario@itla.edu.do',

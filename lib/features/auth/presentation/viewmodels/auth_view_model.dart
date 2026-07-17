@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:ocupa2/core/network/api_exception.dart';
 import 'package:ocupa2/features/auth/data/models/auth_response.dart';
+import 'package:ocupa2/features/auth/data/models/change_password_request.dart';
 import 'package:ocupa2/features/auth/data/models/forgot_password_request.dart';
 import 'package:ocupa2/features/auth/data/models/login_request.dart';
 import 'package:ocupa2/features/auth/data/models/message_response.dart';
@@ -11,10 +12,9 @@ import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.
 
 class AuthViewModel extends ChangeNotifier {
   AuthViewModel({
-    required AuthRepository authRepository,
-    required SessionViewModel sessionViewModel,
-  }) : _authRepository = authRepository,
-       _sessionViewModel = sessionViewModel;
+    required this._authRepository,
+    required this._sessionViewModel,
+  });
 
   final AuthRepository _authRepository;
   final SessionViewModel _sessionViewModel;
@@ -93,6 +93,19 @@ class AuthViewModel extends ChangeNotifier {
             email: email,
             referralMatricula: referralMatricula,
           ),
+        );
+      },
+      successMessageBuilder: (MessageResponse response) {
+        return response.message;
+      },
+    );
+  }
+
+  Future<bool> changePassword({required String password}) {
+    return _execute<MessageResponse>(
+      operation: () {
+        return _authRepository.changePassword(
+          ChangePasswordRequest(password: password),
         );
       },
       successMessageBuilder: (MessageResponse response) {

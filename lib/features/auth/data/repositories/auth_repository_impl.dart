@@ -12,10 +12,9 @@ import 'package:ocupa2/features/auth/data/services/auth_service.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   const AuthRepositoryImpl({
-    required AuthService authService,
-    required TokenStorage tokenStorage,
-  }) : _authService = authService,
-       _tokenStorage = tokenStorage;
+    required this._authService,
+    required this._tokenStorage,
+  });
 
   final AuthService _authService;
   final TokenStorage _tokenStorage;
