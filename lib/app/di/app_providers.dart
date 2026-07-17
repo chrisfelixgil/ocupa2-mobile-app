@@ -1,5 +1,9 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:ocupa2/app/config/environment.dart';
+import 'package:ocupa2/app/router/app_router.dart';
 import 'package:ocupa2/core/network/api_client.dart';
 import 'package:ocupa2/core/session/session_event_bus.dart';
 import 'package:ocupa2/core/storage/secure_storage_service.dart';
@@ -8,6 +12,7 @@ import 'package:ocupa2/features/auth/data/repositories/auth_repository.dart';
 import 'package:ocupa2/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:ocupa2/features/auth/data/services/auth_service.dart';
 import 'package:ocupa2/features/auth/data/services/auth_service_impl.dart';
+import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.dart';
 import 'package:provider/provider.dart';
 
 class AppProviders extends StatelessWidget {
@@ -49,6 +54,26 @@ class AppProviders extends StatelessWidget {
               authService: context.read<AuthService>(),
               tokenStorage: context.read<TokenStorage>(),
             );
+          },
+        ),
+        ChangeNotifierProvider<SessionViewModel>(
+          create: (BuildContext context) {
+            final SessionViewModel viewModel = SessionViewModel(
+              authRepository: context.read<AuthRepository>(),
+              sessionEventBus: context.read<SessionEventBus>(),
+            );
+
+            unawaited(viewModel.restoreSession());
+
+            return viewModel;
+          },
+        ),
+        Provider<GoRouter>(
+          create: (BuildContext context) {
+            return createAppRouter(context.read<SessionViewModel>());
+          },
+          dispose: (_, GoRouter router) {
+            router.dispose();
           },
         ),
       ],
