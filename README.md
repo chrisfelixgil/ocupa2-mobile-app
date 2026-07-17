@@ -45,6 +45,6 @@ Las demás dependencias se agregarán progresivamente según cada módulo.
 ## Clonar el repositorio
 
 ```bash
-git clone https://github.com/TU_USUARIO_GITHUB/ocupa2-mobile-app.git
+git clone https://github.com/chrisfelixgil/ocupa2-mobile-app.git
 cd ocupa2-mobile-app
 git switch dev
