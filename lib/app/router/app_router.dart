@@ -5,7 +5,9 @@ import 'package:ocupa2/app/router/route_error_view.dart';
 import 'package:ocupa2/app/router/route_paths.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/auth_status.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.dart';
+import 'package:ocupa2/features/auth/presentation/views/forgot_password_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/login_view.dart';
+import 'package:ocupa2/features/auth/presentation/views/register_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/session_ready_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/splash_view.dart';
 
@@ -35,6 +37,20 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
         },
       ),
       GoRoute(
+        path: RoutePaths.register,
+        name: AppRouteNames.register,
+        builder: (BuildContext context, GoRouterState state) {
+          return const RegisterView();
+        },
+      ),
+      GoRoute(
+        path: RoutePaths.forgotPassword,
+        name: AppRouteNames.forgotPassword,
+        builder: (BuildContext context, GoRouterState state) {
+          return const ForgotPasswordView();
+        },
+      ),
+      GoRoute(
         path: RoutePaths.home,
         name: AppRouteNames.home,
         builder: (BuildContext context, GoRouterState state) {
@@ -55,7 +71,11 @@ String? _redirectForSession({
   final String location = state.matchedLocation;
 
   final bool isSplash = location == RoutePaths.splash;
-  final bool isLogin = location == RoutePaths.login;
+
+  final bool isPublicAuthRoute =
+      location == RoutePaths.login ||
+      location == RoutePaths.register ||
+      location == RoutePaths.forgotPassword;
 
   switch (sessionViewModel.status) {
     case AuthStatus.checking:
@@ -65,10 +85,10 @@ String? _redirectForSession({
       return isSplash ? null : RoutePaths.splash;
 
     case AuthStatus.unauthenticated:
-      return isLogin ? null : RoutePaths.login;
+      return isPublicAuthRoute ? null : RoutePaths.login;
 
     case AuthStatus.authenticated:
-      if (isSplash || isLogin) {
+      if (isSplash || isPublicAuthRoute) {
         return RoutePaths.home;
       }
 

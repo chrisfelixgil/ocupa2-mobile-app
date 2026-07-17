@@ -12,6 +12,7 @@ import 'package:ocupa2/features/auth/data/repositories/auth_repository.dart';
 import 'package:ocupa2/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:ocupa2/features/auth/data/services/auth_service.dart';
 import 'package:ocupa2/features/auth/data/services/auth_service_impl.dart';
+import 'package:ocupa2/features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.dart';
 import 'package:provider/provider.dart';
 
@@ -66,6 +67,14 @@ class AppProviders extends StatelessWidget {
             unawaited(viewModel.restoreSession());
 
             return viewModel;
+          },
+        ),
+        ChangeNotifierProvider<AuthViewModel>(
+          create: (BuildContext context) {
+            return AuthViewModel(
+              authRepository: context.read<AuthRepository>(),
+              sessionViewModel: context.read<SessionViewModel>(),
+            );
           },
         ),
         Provider<GoRouter>(

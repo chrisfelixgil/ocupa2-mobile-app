@@ -3,14 +3,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ocupa2/app/app.dart';
 import 'package:ocupa2/app/router/app_router.dart';
+import 'package:ocupa2/app/router/route_paths.dart';
 import 'package:ocupa2/core/session/session_event_bus.dart';
+import 'package:ocupa2/features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.dart';
 import 'package:provider/provider.dart';
 
 import 'helpers/fake_auth_repository.dart';
 
 void main() {
-  testWidgets('redirige al login cuando no existe sesión', (
+  testWidgets('permite navegar por las rutas públicas sin sesión', (
     WidgetTester tester,
   ) async {
     final SessionEventBus eventBus = SessionEventBus();
@@ -27,6 +29,11 @@ void main() {
 
     await sessionViewModel.restoreSession();
 
+    final AuthViewModel authViewModel = AuthViewModel(
+      authRepository: repository,
+      sessionViewModel: sessionViewModel,
+    );
+
     final GoRouter router = createAppRouter(sessionViewModel);
 
     await tester.pumpWidget(
@@ -35,6 +42,7 @@ void main() {
           ChangeNotifierProvider<SessionViewModel>.value(
             value: sessionViewModel,
           ),
+          ChangeNotifierProvider<AuthViewModel>.value(value: authViewModel),
           Provider<GoRouter>.value(value: router),
         ],
         child: const Ocupa2App(),
@@ -43,15 +51,22 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Inicio de sesión'), findsOneWidget);
-    expect(
-      find.text('No existe una sesión guardada en este dispositivo.'),
-      findsOneWidget,
-    );
+    expect(find.text('Inicia sesión en Ocupa2'), findsOneWidget);
+
+    router.go(RoutePaths.register);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Crea tu cuenta'), findsOneWidget);
+
+    router.go(RoutePaths.forgotPassword);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Recupera tu contraseña'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
 
     router.dispose();
+    authViewModel.dispose();
     sessionViewModel.dispose();
     eventBus.dispose();
   });
@@ -73,6 +88,11 @@ void main() {
 
     await sessionViewModel.restoreSession();
 
+    final AuthViewModel authViewModel = AuthViewModel(
+      authRepository: repository,
+      sessionViewModel: sessionViewModel,
+    );
+
     final GoRouter router = createAppRouter(sessionViewModel);
 
     await tester.pumpWidget(
@@ -81,6 +101,7 @@ void main() {
           ChangeNotifierProvider<SessionViewModel>.value(
             value: sessionViewModel,
           ),
+          ChangeNotifierProvider<AuthViewModel>.value(value: authViewModel),
           Provider<GoRouter>.value(value: router),
         ],
         child: const Ocupa2App(),
@@ -96,6 +117,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
 
     router.dispose();
+    authViewModel.dispose();
     sessionViewModel.dispose();
     eventBus.dispose();
   });
