@@ -1,5 +1,10 @@
-﻿// File: login_request.dart
-// Project: Ocupa2 Mobile App
-// Description: Auto-generated structural placeholder
-// TODO: Implement logic for login_request.dart
+class LoginRequest {
+  const LoginRequest({required this.email, required this.password});
 
+  final String email;
+  final String password;
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{'email': email.trim(), 'password': password};
+  }
+}
