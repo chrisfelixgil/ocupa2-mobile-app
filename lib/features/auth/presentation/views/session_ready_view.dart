@@ -136,6 +136,17 @@ class SessionReadyView extends StatelessWidget {
                     label: const Text('Cambiar contraseña'),
                   ),
                   const SizedBox(height: AppSpacing.md),
+                  // TODO(home): temporal hasta que exista la pantalla de
+                  // Inicio (módulo de Kaysha) con navegación por pestañas.
+                  OutlinedButton.icon(
+                    key: const Key('open_explore_offers_button'),
+                    onPressed: () {
+                      context.pushNamed(AppRouteNames.jobSearchExplore);
+                    },
+                    icon: const Icon(Icons.travel_explore_rounded),
+                    label: const Text('Explorar ofertas'),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   OutlinedButton.icon(
                     key: const Key('logout_button'),
                     onPressed: session.isLoggingOut
