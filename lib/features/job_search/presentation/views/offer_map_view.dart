@@ -59,63 +59,65 @@ class _OfferMapViewState extends State<OfferMapView> {
       appBar: AppBar(title: const Text('Mapa de ofertas')),
       body: Stack(
         children: <Widget>[
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: center,
-              initialZoom: located.isEmpty ? 12 : 13,
-              onTap: (_, __) {
-                setState(() {
-                  _selectedOffer = null;
-                });
-              },
-            ),
-            children: <Widget>[
-              TileLayer(
-                // OpenStreetMap directo bloquea muchas peticiones desde apps
-                // (política de uso justo de tiles.openstreetmap.org). CARTO
-                // ofrece los mismos datos de OSM con tiles gratuitos
-                // pensados para consumirse desde apps.
-                urlTemplate:
-                    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                subdomains: const <String>['a', 'b', 'c', 'd'],
-                userAgentPackageName: 'edu.itla.randomguysandgirl.ocupa2',
-                errorTileCallback: (TileImage tile, Object error, StackTrace? stackTrace) {
-                  debugPrint('No se pudo cargar un tile del mapa: $error');
+          Positioned.fill(
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: center,
+                initialZoom: located.isEmpty ? 12 : 13,
+                onTap: (_, __) {
+                  setState(() {
+                    _selectedOffer = null;
+                  });
                 },
               ),
-              RichAttributionWidget(
-                attributions: <SourceAttribution>[
-                  TextSourceAttribution(
-                    '© OpenStreetMap contributors, © CARTO',
-                    onTap: () {},
-                  ),
-                ],
-              ),
-              MarkerLayer(
-                markers: located.map((Offer offer) {
-                  return Marker(
-                    point: LatLng(offer.latitude!, offer.longitude!),
-                    width: 44,
-                    height: 44,
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedOffer = offer;
-                        });
-                      },
-                      child: Icon(
-                        Icons.location_on_rounded,
-                        color: _selectedOffer?.id == offer.id
-                            ? AppColors.terracotta
-                            : AppColors.navy,
-                        size: 40,
-                      ),
+              children: <Widget>[
+                TileLayer(
+                  // OpenStreetMap directo bloquea muchas peticiones desde apps
+                  // (política de uso justo de tiles.openstreetmap.org). CARTO
+                  // ofrece los mismos datos de OSM con tiles gratuitos
+                  // pensados para consumirse desde apps.
+                  urlTemplate:
+                      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                  subdomains: const <String>['a', 'b', 'c', 'd'],
+                  userAgentPackageName: 'edu.itla.randomguysandgirl.ocupa2',
+                  errorTileCallback: (TileImage tile, Object error, StackTrace? stackTrace) {
+                    debugPrint('No se pudo cargar un tile del mapa: $error');
+                  },
+                ),
+                RichAttributionWidget(
+                  attributions: <SourceAttribution>[
+                    TextSourceAttribution(
+                      '© OpenStreetMap contributors, © CARTO',
+                      onTap: () {},
                     ),
-                  );
-                }).toList(),
-              ),
-            ],
+                  ],
+                ),
+                MarkerLayer(
+                  markers: located.map((Offer offer) {
+                    return Marker(
+                      point: LatLng(offer.latitude!, offer.longitude!),
+                      width: 44,
+                      height: 44,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedOffer = offer;
+                          });
+                        },
+                        child: Icon(
+                          Icons.location_on_rounded,
+                          color: _selectedOffer?.id == offer.id
+                              ? AppColors.terracotta
+                              : AppColors.navy,
+                          size: 40,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
           ),
           if (viewModel.isLoading)
             const Positioned(
