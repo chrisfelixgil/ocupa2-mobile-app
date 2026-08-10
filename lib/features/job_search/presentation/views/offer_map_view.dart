@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
@@ -38,74 +37,21 @@ class _OfferMapViewState extends State<OfferMapView> {
     });
   }
 
+  /// Ofertas con coordenadas utilizables. Se descartan además las que
+  /// vienen en (0, 0): esa combinación no es un lugar real, es el valor
+  /// que quedó en algunas ofertas semilla/de prueba que nunca recibieron
+  /// una ubicación real. Tratarlas como "sin ubicación" evita que el mapa
+  /// se centre en medio del océano.
   List<Offer> _offersWithLocation(List<Offer> offers) {
-    return offers
-        .where((Offer offer) => offer.latitude != null && offer.longitude != null)
-        .toList();
-  }
-
-  /// TEMPORAL: botón de diagnóstico para confirmar si el problema de los
-  /// tiles en blanco es de red (dentro de la app) o de renderizado.
-  /// Quitar una vez que el mapa funcione de forma confiable.
-  Future<void> _runNetworkDiagnostics(
-    BuildContext context, {
-    required LatLng center,
-    required int locatedOffersCount,
-  }) async {
-    const String testUrl =
-        'https://a.basemaps.cartocdn.com/rastertiles/voyager/2/1/1.png';
-
-    final Dio dio = Dio();
-    String message;
-
-    try {
-      final Response<List<int>> response = await dio.get<List<int>>(
-        testUrl,
-        options: Options(responseType: ResponseType.bytes),
-      );
-
-      final int bytes = response.data?.length ?? 0;
-
-      final String centerInfo =
-          'Centro actual del mapa: ${center.latitude}, ${center.longitude}\n'
-          'Ofertas con ubicación: $locatedOffersCount\n'
-          '(Santo Domingo de referencia: 18.4861, -69.9312)';
-
-      message = bytes > 0
-          ? 'Éxito.\nCódigo: ${response.statusCode}\nBytes recibidos: $bytes\n\n'
-              '$centerInfo\n\n'
-              'Si el centro de arriba está lejos de Santo Domingo (por '
-              'ejemplo cerca de 0, 0), el mapa SÍ está funcionando: solo '
-              'está centrado en una oferta con coordenadas de prueba '
-              'inválidas, y por eso se ve todo del mismo color (océano).'
-          : 'Respondió código ${response.statusCode} pero sin contenido.';
-    } catch (error) {
-      message = 'Error al descargar el tile desde la app:\n$error';
-    } finally {
-      dio.close();
-    }
-
-    if (!context.mounted) {
-      return;
-    }
-
-    await showDialog<void>(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Diagnóstico de red (temporal)'),
-          content: SingleChildScrollView(child: Text(message)),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-              child: const Text('Cerrar'),
-            ),
-          ],
-        );
-      },
-    );
+    return offers.where((Offer offer) {
+      final double? lat = offer.latitude;
+      final double? lng = offer.longitude;
+      if (lat == null || lng == null) {
+        return false;
+      }
+      final bool isNullIsland = lat == 0 && lng == 0;
+      return !isNullIsland;
+    }).toList();
   }
 
   @override
@@ -123,19 +69,6 @@ class _OfferMapViewState extends State<OfferMapView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mapa de ofertas'),
-        actions: <Widget>[
-          IconButton(
-            tooltip: 'Diagnóstico de red (temporal)',
-            icon: const Icon(Icons.bug_report_outlined),
-            onPressed: () {
-              _runNetworkDiagnostics(
-                context,
-                center: center,
-                locatedOffersCount: located.length,
-              );
-            },
-          ),
-        ],
       ),
       body: Stack(
         children: <Widget>[
