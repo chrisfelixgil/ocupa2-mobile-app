@@ -1,4 +1,3 @@
-// File: catalog_routes.dart
-// Project: Ocupa2 Mobile App
-// Description: Auto-generated structural placeholder
-// TODO: Implement logic for catalog_routes.dart
+// El módulo catalog no tiene pantallas propias: expone el catálogo de
+// tipos de trabajo (GET /job-types) que consumen job_search y job_posting
+// para sus filtros y formularios dinámicos. No registra rutas.

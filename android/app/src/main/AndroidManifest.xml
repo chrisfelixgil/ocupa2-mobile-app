@@ -8,6 +8,14 @@
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false">
 
+        <!-- Impeller (el renderizador nuevo de Flutter) tiene problemas
+             conocidos con imágenes en algunos emuladores Android (GPU
+             virtual). Se desactiva para usar Skia, el renderizador
+             anterior, más estable en estos casos. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
