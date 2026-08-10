@@ -24,13 +24,11 @@ class OfferDetailView extends StatelessWidget {
   }
 
   Widget _buildBody(BuildContext context, OfferDetailViewModel viewModel) {
-    switch (viewModel.status) {
-      case OfferDetailStatus.idle:
-      case OfferDetailStatus.loading:
-        return const Center(child: CircularProgressIndicator());
-
-      case OfferDetailStatus.error:
-        return Center(
+    return switch (viewModel.status) {
+      OfferDetailStatus.idle ||
+      OfferDetailStatus.loading =>
+        const Center(child: CircularProgressIndicator()),
+      OfferDetailStatus.error => Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
@@ -45,17 +43,11 @@ class OfferDetailView extends StatelessWidget {
               ],
             ),
           ),
-        );
-
-      case OfferDetailStatus.loaded:
-        final Offer offer = viewModel.offer!;
-
-        if (viewModel.applicationSubmitted) {
-          return const _ApplicationSubmittedView();
-        }
-
-        return _OfferDetailContent(offer: offer, viewModel: viewModel);
-    }
+        ),
+      OfferDetailStatus.loaded => viewModel.applicationSubmitted
+          ? const _ApplicationSubmittedView()
+          : _OfferDetailContent(offer: viewModel.offer!, viewModel: viewModel),
+    };
   }
 }
 
@@ -256,17 +248,30 @@ class _QuestionField extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final validator = question.required
+    // Cada tipo de campo de FormBuilder valida un tipo de valor distinto
+    // (String, DateTime, etc.), así que el validador se arma por caso en
+    // vez de compartir uno solo entre todos.
+    final String? Function(String?)? textValidator = question.required
         ? AppValidators.requiredText(question.label)
         : null;
 
     switch (question.type) {
       case 'date':
+        final String? Function(DateTime?)? dateValidator = question.required
+            ? (DateTime? value) {
+                if (value == null) {
+                  return '${question.label} es obligatorio.';
+                }
+
+                return null;
+              }
+            : null;
+
         return FormBuilderDateTimePicker(
           name: question.id!,
           enabled: enabled,
           inputType: InputType.date,
-          validator: validator,
+          validator: dateValidator,
           decoration: InputDecoration(labelText: question.label),
         );
 
@@ -274,7 +279,7 @@ class _QuestionField extends StatelessWidget {
         return FormBuilderDropdown<String>(
           name: question.id!,
           enabled: enabled,
-          validator: validator,
+          validator: textValidator,
           decoration: InputDecoration(labelText: question.label),
           items: question.options.map((String option) {
             return DropdownMenuItem<String>(
@@ -297,7 +302,7 @@ class _QuestionField extends StatelessWidget {
         return FormBuilderTextField(
           name: question.id!,
           enabled: enabled,
-          validator: validator,
+          validator: textValidator,
           decoration: InputDecoration(labelText: question.label),
         );
     }

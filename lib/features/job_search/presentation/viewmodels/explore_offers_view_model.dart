@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:ocupa2/core/network/api_exception.dart';
 import 'package:ocupa2/features/job_search/data/models/offer.dart';
 import 'package:ocupa2/features/job_search/data/repositories/job_search_repository.dart';
+import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offers_status.dart';
 
 /// Lista + filtro de "Explorar ofertas". El mapa (job_search/mapa) puede
 /// reusar este mismo ViewModel más adelante ya que comparten los mismos

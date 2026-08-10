@@ -178,13 +178,11 @@ class _Body extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    switch (viewModel.status) {
-      case ExploreOffersStatus.idle:
-      case ExploreOffersStatus.loading:
-        return const Center(child: CircularProgressIndicator());
-
-      case ExploreOffersStatus.error:
-        return Center(
+    return switch (viewModel.status) {
+      ExploreOffersStatus.idle ||
+      ExploreOffersStatus.loading =>
+        const Center(child: CircularProgressIndicator()),
+      ExploreOffersStatus.error => Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
@@ -199,35 +197,37 @@ class _Body extends StatelessWidget {
               ],
             ),
           ),
-        );
+        ),
+      ExploreOffersStatus.success => _buildOffersList(context),
+    };
+  }
 
-      case ExploreOffersStatus.success:
-        if (viewModel.offers.isEmpty) {
-          return const Center(
-            child: Text('No hay ofertas disponibles por ahora.'),
-          );
-        }
+  Widget _buildOffersList(BuildContext context) {
+    if (viewModel.offers.isEmpty) {
+      return const Center(
+        child: Text('No hay ofertas disponibles por ahora.'),
+      );
+    }
 
-        return RefreshIndicator(
-          onRefresh: viewModel.load,
-          child: ListView.builder(
-            padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-            itemCount: viewModel.offers.length,
-            itemBuilder: (BuildContext context, int index) {
-              final offer = viewModel.offers[index];
+    return RefreshIndicator(
+      onRefresh: viewModel.load,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+        itemCount: viewModel.offers.length,
+        itemBuilder: (BuildContext context, int index) {
+          final offer = viewModel.offers[index];
 
-              return OfferCard(
-                offer: offer,
-                onTap: () {
-                  context.pushNamed(
-                    AppRouteNames.jobSearchOfferDetail,
-                    pathParameters: <String, String>{'id': offer.id},
-                  );
-                },
+          return OfferCard(
+            offer: offer,
+            onTap: () {
+              context.pushNamed(
+                AppRouteNames.jobSearchOfferDetail,
+                pathParameters: <String, String>{'id': offer.id},
               );
             },
-          ),
-        );
-    }
+          );
+        },
+      ),
+    );
   }
 }
