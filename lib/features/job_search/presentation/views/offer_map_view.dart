@@ -87,6 +87,25 @@ class _OfferMapViewState extends State<OfferMapView> {
             ),
           ),
         ),
+        actions: <Widget>[
+          // TEMPORAL: mismo tile pintado con Image.network normal
+          // (fuera de flutter_map) para descartar que el problema sea
+          // del paquete flutter_map y no de la app en general.
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Image.network(
+                'https://a.basemaps.cartocdn.com/rastertiles/voyager/2/1/1.png',
+                fit: BoxFit.cover,
+                errorBuilder: (BuildContext ctx, Object error, StackTrace? st) {
+                  return const Icon(Icons.error, color: Colors.red);
+                },
+              ),
+            ),
+          ),
+        ],
       ),
       body: Stack(
         children: <Widget>[
