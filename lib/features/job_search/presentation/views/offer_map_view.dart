@@ -47,7 +47,11 @@ class _OfferMapViewState extends State<OfferMapView> {
   /// TEMPORAL: botón de diagnóstico para confirmar si el problema de los
   /// tiles en blanco es de red (dentro de la app) o de renderizado.
   /// Quitar una vez que el mapa funcione de forma confiable.
-  Future<void> _runNetworkDiagnostics(BuildContext context) async {
+  Future<void> _runNetworkDiagnostics(
+    BuildContext context, {
+    required LatLng center,
+    required int locatedOffersCount,
+  }) async {
     const String testUrl =
         'https://a.basemaps.cartocdn.com/rastertiles/voyager/2/1/1.png';
 
@@ -62,10 +66,18 @@ class _OfferMapViewState extends State<OfferMapView> {
 
       final int bytes = response.data?.length ?? 0;
 
+      final String centerInfo =
+          'Centro actual del mapa: ${center.latitude}, ${center.longitude}\n'
+          'Ofertas con ubicación: $locatedOffersCount\n'
+          '(Santo Domingo de referencia: 18.4861, -69.9312)';
+
       message = bytes > 0
           ? 'Éxito.\nCódigo: ${response.statusCode}\nBytes recibidos: $bytes\n\n'
-              'La red funciona bien desde la app. El problema es de '
-              'renderizado (probablemente Impeller), no de conexión.'
+              '$centerInfo\n\n'
+              'Si el centro de arriba está lejos de Santo Domingo (por '
+              'ejemplo cerca de 0, 0), el mapa SÍ está funcionando: solo '
+              'está centrado en una oferta con coordenadas de prueba '
+              'inválidas, y por eso se ve todo del mismo color (océano).'
           : 'Respondió código ${response.statusCode} pero sin contenido.';
     } catch (error) {
       message = 'Error al descargar el tile desde la app:\n$error';
@@ -116,7 +128,11 @@ class _OfferMapViewState extends State<OfferMapView> {
             tooltip: 'Diagnóstico de red (temporal)',
             icon: const Icon(Icons.bug_report_outlined),
             onPressed: () {
-              _runNetworkDiagnostics(context);
+              _runNetworkDiagnostics(
+                context,
+                center: center,
+                locatedOffersCount: located.length,
+              );
             },
           ),
         ],
