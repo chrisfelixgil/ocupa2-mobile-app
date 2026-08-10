@@ -26,10 +26,6 @@ class _OfferMapViewState extends State<OfferMapView> {
   final MapController _mapController = MapController();
   Offer? _selectedOffer;
 
-  // TEMPORAL: contadores para depurar por qué no se ven los tiles.
-  int _tileErrorCount = 0;
-  Object? _lastTileError;
-
   @override
   void initState() {
     super.initState();
@@ -73,39 +69,6 @@ class _OfferMapViewState extends State<OfferMapView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mapa de ofertas'),
-        // TEMPORAL: contador de errores de tile visible en pantalla.
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(20),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              'Errores de tile: $_tileErrorCount'
-              '${_lastTileError != null ? ' (último: $_lastTileError)' : ''}',
-              style: const TextStyle(fontSize: 11, color: Colors.white70),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ),
-        actions: <Widget>[
-          // TEMPORAL: mismo tile pintado con Image.network normal
-          // (fuera de flutter_map) para descartar que el problema sea
-          // del paquete flutter_map y no de la app en general.
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-            child: SizedBox(
-              width: 40,
-              height: 40,
-              child: Image.network(
-                'https://a.basemaps.cartocdn.com/rastertiles/voyager/2/1/1.png',
-                fit: BoxFit.cover,
-                errorBuilder: (BuildContext ctx, Object error, StackTrace? st) {
-                  return const Icon(Icons.error, color: Colors.red);
-                },
-              ),
-            ),
-          ),
-        ],
       ),
       body: Stack(
         children: <Widget>[
@@ -131,14 +94,19 @@ class _OfferMapViewState extends State<OfferMapView> {
                       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
                   subdomains: const <String>['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'edu.itla.randomguysandgirl.ocupa2',
+                  // El caché HTTP integrado de flutter_map (desde 8.2.0)
+                  // intenta parsear la cabecera Last-Modified/Date del
+                  // servidor de tiles con un parser estricto (RFC-1123).
+                  // CARTO no cumple ese formato exacto, lo que hace que el
+                  // parseo falle internamente y NINGÚN tile se muestre, sin
+                  // pasar por errorTileCallback (por eso no había forma de
+                  // detectarlo desde la UI). Se desactiva ese caché para
+                  // evitar el bug: https://github.com/fleaflet/flutter_map/issues/2124
+                  tileProvider: NetworkTileProvider(
+                    cachingProvider: const DisabledMapCachingProvider(),
+                  ),
                   errorTileCallback: (TileImage tile, Object error, StackTrace? stackTrace) {
                     debugPrint('No se pudo cargar un tile del mapa: $error');
-                    if (mounted) {
-                      setState(() {
-                        _tileErrorCount++;
-                        _lastTileError = error;
-                      });
-                    }
                   },
                 ),
                 RichAttributionWidget(
@@ -269,12 +237,6 @@ class _OfferPreviewCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: textTheme.bodyMedium,
-                    ),
-                    // TEMPORAL: para depurar coordenadas de prueba raras.
-                    // Quitar esta línea cuando ya no haga falta.
-                    Text(
-                      'lat: ${offer.latitude}, lng: ${offer.longitude}',
-                      style: textTheme.bodySmall,
                     ),
                   ],
                 ),
