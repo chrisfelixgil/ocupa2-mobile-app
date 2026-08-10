@@ -57,7 +57,18 @@ class _ExploreOffersViewState extends State<ExploreOffersView> {
     final ExploreOffersViewModel viewModel = context.watch<ExploreOffersViewModel>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Explorar ofertas')),
+      appBar: AppBar(
+        title: const Text('Explorar ofertas'),
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Ver en el mapa',
+            icon: const Icon(Icons.map_outlined),
+            onPressed: () {
+              context.pushNamed(AppRouteNames.jobSearchMap);
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: <Widget>[
           _Filters(

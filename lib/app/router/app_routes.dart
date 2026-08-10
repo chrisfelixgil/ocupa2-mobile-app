@@ -8,5 +8,6 @@ abstract final class AppRouteNames {
 
   // job_search
   static const String jobSearchExplore = 'job-search-explore';
+  static const String jobSearchMap = 'job-search-map';
   static const String jobSearchOfferDetail = 'job-search-offer-detail';
 }
