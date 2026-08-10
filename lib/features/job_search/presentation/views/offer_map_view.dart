@@ -72,8 +72,25 @@ class _OfferMapViewState extends State<OfferMapView> {
             ),
             children: <Widget>[
               TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'do.itla.ocupa2',
+                // OpenStreetMap directo bloquea muchas peticiones desde apps
+                // (política de uso justo de tiles.openstreetmap.org). CARTO
+                // ofrece los mismos datos de OSM con tiles gratuitos
+                // pensados para consumirse desde apps.
+                urlTemplate:
+                    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                subdomains: const <String>['a', 'b', 'c', 'd'],
+                userAgentPackageName: 'edu.itla.randomguysandgirl.ocupa2',
+                errorTileCallback: (TileImage tile, Object error, StackTrace? stackTrace) {
+                  debugPrint('No se pudo cargar un tile del mapa: $error');
+                },
+              ),
+              RichAttributionWidget(
+                attributions: <SourceAttribution>[
+                  TextSourceAttribution(
+                    '© OpenStreetMap contributors, © CARTO',
+                    onTap: () {},
+                  ),
+                ],
               ),
               MarkerLayer(
                 markers: located.map((Offer offer) {
