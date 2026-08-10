@@ -26,6 +26,12 @@ class _OfferMapViewState extends State<OfferMapView> {
   final MapController _mapController = MapController();
   Offer? _selectedOffer;
 
+  // TEMPORAL: para ver que esta pasando con los tiles ahora que el
+  // cache esta desactivado.
+  int _tileErrorCount = 0;
+  Object? _lastTileError;
+  final Set<String> _builtTileKeys = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -69,6 +75,19 @@ class _OfferMapViewState extends State<OfferMapView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mapa de ofertas'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(20),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'Tiles construidos: ${_builtTileKeys.length} | Errores: $_tileErrorCount'
+              '${_lastTileError != null ? ' (ult: $_lastTileError)' : ''}',
+              style: const TextStyle(fontSize: 11, color: Colors.white70),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
       ),
       body: Stack(
         children: <Widget>[
@@ -107,6 +126,25 @@ class _OfferMapViewState extends State<OfferMapView> {
                   ),
                   errorTileCallback: (TileImage tile, Object error, StackTrace? stackTrace) {
                     debugPrint('No se pudo cargar un tile del mapa: $error');
+                    if (mounted) {
+                      setState(() {
+                        _tileErrorCount++;
+                        _lastTileError = error;
+                      });
+                    }
+                  },
+                  tileBuilder: (BuildContext context, Widget tileWidget, TileImage tile) {
+                    final String key = tile.coordinates.toString();
+                    if (!_builtTileKeys.contains(key)) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && !_builtTileKeys.contains(key)) {
+                          setState(() {
+                            _builtTileKeys.add(key);
+                          });
+                        }
+                      });
+                    }
+                    return tileWidget;
                   },
                 ),
                 RichAttributionWidget(
