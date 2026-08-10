@@ -26,6 +26,10 @@ class _OfferMapViewState extends State<OfferMapView> {
   final MapController _mapController = MapController();
   Offer? _selectedOffer;
 
+  // TEMPORAL: contadores para depurar por qué no se ven los tiles.
+  int _tileErrorCount = 0;
+  Object? _lastTileError;
+
   @override
   void initState() {
     super.initState();
@@ -69,6 +73,20 @@ class _OfferMapViewState extends State<OfferMapView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mapa de ofertas'),
+        // TEMPORAL: contador de errores de tile visible en pantalla.
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(20),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'Errores de tile: $_tileErrorCount'
+              '${_lastTileError != null ? ' (último: $_lastTileError)' : ''}',
+              style: const TextStyle(fontSize: 11, color: Colors.white70),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
       ),
       body: Stack(
         children: <Widget>[
@@ -96,6 +114,12 @@ class _OfferMapViewState extends State<OfferMapView> {
                   userAgentPackageName: 'edu.itla.randomguysandgirl.ocupa2',
                   errorTileCallback: (TileImage tile, Object error, StackTrace? stackTrace) {
                     debugPrint('No se pudo cargar un tile del mapa: $error');
+                    if (mounted) {
+                      setState(() {
+                        _tileErrorCount++;
+                        _lastTileError = error;
+                      });
+                    }
                   },
                 ),
                 RichAttributionWidget(
