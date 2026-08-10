@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
@@ -26,11 +28,11 @@ class _OfferMapViewState extends State<OfferMapView> {
   final MapController _mapController = MapController();
   Offer? _selectedOffer;
 
-  // TEMPORAL: para ver que esta pasando con los tiles ahora que el
-  // cache esta desactivado.
+  // TEMPORAL: inspeccion directa del estado interno de cada tile
+  // (opacidad, si esta listo, si tiene imagen decodificada).
   int _tileErrorCount = 0;
   Object? _lastTileError;
-  final Set<String> _builtTileKeys = <String>{};
+  final Map<String, String> _tileSnapshots = <String, String>{};
 
   @override
   void initState() {
@@ -76,14 +78,16 @@ class _OfferMapViewState extends State<OfferMapView> {
       appBar: AppBar(
         title: const Text('Mapa de ofertas'),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(20),
+          preferredSize: const Size.fromHeight(32),
           child: Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Text(
-              'Tiles construidos: ${_builtTileKeys.length} | Errores: $_tileErrorCount'
-              '${_lastTileError != null ? ' (ult: $_lastTileError)' : ''}',
-              style: const TextStyle(fontSize: 11, color: Colors.white70),
-              maxLines: 1,
+              _tileSnapshots.isEmpty
+                  ? 'Sin tiles todavia | Errores: $_tileErrorCount'
+                  : '${_tileSnapshots.length} tiles | ${_tileSnapshots.values.last}'
+                    ' | Errores: $_tileErrorCount',
+              style: const TextStyle(fontSize: 10, color: Colors.white70),
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -141,11 +145,17 @@ class _OfferMapViewState extends State<OfferMapView> {
                   },
                   tileBuilder: (BuildContext context, Widget tileWidget, TileImage tile) {
                     final String key = tile.coordinates.toString();
-                    if (!_builtTileKeys.contains(key)) {
+                    final ui.Image? decoded = tile.imageInfo?.image;
+                    final String snapshot = 'op:${tile.opacity.toStringAsFixed(2)} '
+                        'ready:${tile.readyToDisplay} '
+                        'img:${decoded != null} '
+                        '${decoded != null ? '${decoded.width}x${decoded.height}' : ''} '
+                        'err:${tile.loadError}';
+                    if (_tileSnapshots[key] != snapshot) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted && !_builtTileKeys.contains(key)) {
+                        if (mounted) {
                           setState(() {
-                            _builtTileKeys.add(key);
+                            _tileSnapshots[key] = snapshot;
                           });
                         }
                       });
