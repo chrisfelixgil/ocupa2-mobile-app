@@ -227,6 +227,12 @@ class _OfferPreviewCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: textTheme.bodyMedium,
                     ),
+                    // TEMPORAL: para depurar coordenadas de prueba raras.
+                    // Quitar esta línea cuando ya no haga falta.
+                    Text(
+                      'lat: ${offer.latitude}, lng: ${offer.longitude}',
+                      style: textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
