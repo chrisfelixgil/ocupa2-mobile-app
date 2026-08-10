@@ -124,6 +124,12 @@ class _OfferMapViewState extends State<OfferMapView> {
                   tileProvider: NetworkTileProvider(
                     cachingProvider: const DisabledMapCachingProvider(),
                   ),
+                  // TileLayer por defecto anima la opacidad de cada tile
+                  // de 0 a 1 al cargar (TileDisplay.fadeIn()). En este
+                  // emulador esa animación parece quedarse pegada en 0
+                  // (los tiles se "construyen" y no dan error, pero nunca
+                  // se ven). Se fuerza a que aparezcan de inmediato.
+                  tileDisplay: const TileDisplay.instantaneous(),
                   errorTileCallback: (TileImage tile, Object error, StackTrace? stackTrace) {
                     debugPrint('No se pudo cargar un tile del mapa: $error');
                     if (mounted) {
