@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
@@ -43,6 +44,58 @@ class _OfferMapViewState extends State<OfferMapView> {
         .toList();
   }
 
+  /// TEMPORAL: botón de diagnóstico para confirmar si el problema de los
+  /// tiles en blanco es de red (dentro de la app) o de renderizado.
+  /// Quitar una vez que el mapa funcione de forma confiable.
+  Future<void> _runNetworkDiagnostics(BuildContext context) async {
+    const String testUrl =
+        'https://a.basemaps.cartocdn.com/rastertiles/voyager/2/1/1.png';
+
+    final Dio dio = Dio();
+    String message;
+
+    try {
+      final Response<List<int>> response = await dio.get<List<int>>(
+        testUrl,
+        options: Options(responseType: ResponseType.bytes),
+      );
+
+      final int bytes = response.data?.length ?? 0;
+
+      message = bytes > 0
+          ? 'Éxito.\nCódigo: ${response.statusCode}\nBytes recibidos: $bytes\n\n'
+              'La red funciona bien desde la app. El problema es de '
+              'renderizado (probablemente Impeller), no de conexión.'
+          : 'Respondió código ${response.statusCode} pero sin contenido.';
+    } catch (error) {
+      message = 'Error al descargar el tile desde la app:\n$error';
+    } finally {
+      dio.close();
+    }
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Diagnóstico de red (temporal)'),
+          content: SingleChildScrollView(child: Text(message)),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              child: const Text('Cerrar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ExploreOffersViewModel viewModel = context.watch<ExploreOffersViewModel>();
@@ -56,7 +109,18 @@ class _OfferMapViewState extends State<OfferMapView> {
         : _fallbackCenter;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mapa de ofertas')),
+      appBar: AppBar(
+        title: const Text('Mapa de ofertas'),
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Diagnóstico de red (temporal)',
+            icon: const Icon(Icons.bug_report_outlined),
+            onPressed: () {
+              _runNetworkDiagnostics(context);
+            },
+          ),
+        ],
+      ),
       body: Stack(
         children: <Widget>[
           Positioned.fill(
