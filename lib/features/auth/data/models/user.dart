@@ -7,11 +7,14 @@ class User {
     required this.firstName,
     required this.lastName,
     required this.nombre,
+    required this.profileCompleted,
     required this.referralMatricula,
     required this.role,
     required this.createdAt,
     required this.lastLoginAt,
-    required this.updatedAt,
+    this.cedula,
+    this.gender,
+    this.birthDate,
   });
 
   final String id;
@@ -19,11 +22,14 @@ class User {
   final String firstName;
   final String lastName;
   final String nombre;
+  final String? cedula;
+  final String? gender;
+  final DateTime? birthDate;
+  final bool profileCompleted;
   final String referralMatricula;
   final String role;
   final DateTime createdAt;
   final DateTime lastLoginAt;
-  final DateTime updatedAt;
 
   factory User.fromJson(Object? json) {
     final Map<String, dynamic> data = requireJsonObject(
@@ -37,6 +43,10 @@ class User {
       firstName: requireString(data, 'firstName', context: 'El usuario'),
       lastName: requireString(data, 'lastName', context: 'El usuario'),
       nombre: requireString(data, 'nombre', context: 'El usuario'),
+      cedula: _optionalString(data, 'cedula', context: 'El usuario'),
+      gender: _optionalString(data, 'gender', context: 'El usuario'),
+      birthDate: _optionalDateTime(data, 'birthDate', context: 'El usuario'),
+      profileCompleted: data['profileCompleted'] == true,
       referralMatricula: requireString(
         data,
         'referralMatricula',
@@ -45,7 +55,6 @@ class User {
       role: requireString(data, 'role', context: 'El usuario'),
       createdAt: requireDateTime(data, 'createdAt', context: 'El usuario'),
       lastLoginAt: requireDateTime(data, 'lastLoginAt', context: 'El usuario'),
-      updatedAt: requireDateTime(data, 'updatedAt', context: 'El usuario'),
     );
   }
 
@@ -56,11 +65,54 @@ class User {
       'firstName': firstName,
       'lastName': lastName,
       'nombre': nombre,
+      'cedula': cedula,
+      'gender': gender,
+      'birthDate': birthDate?.toIso8601String(),
+      'profileCompleted': profileCompleted,
       'referralMatricula': referralMatricula,
       'role': role,
       'createdAt': createdAt.toIso8601String(),
       'lastLoginAt': lastLoginAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
     };
   }
+}
+
+String? _optionalString(
+  Map<String, dynamic> json,
+  String key, {
+  required String context,
+}) {
+  final Object? value = json[key];
+
+  if (value == null) {
+    return null;
+  }
+
+  if (value is! String) {
+    throw FormatException('$context no contiene un valor válido para "$key".');
+  }
+
+  final String normalizedValue = value.trim();
+
+  return normalizedValue.isEmpty ? null : normalizedValue;
+}
+
+DateTime? _optionalDateTime(
+  Map<String, dynamic> json,
+  String key, {
+  required String context,
+}) {
+  final String? value = _optionalString(json, key, context: context);
+
+  if (value == null) {
+    return null;
+  }
+
+  final DateTime? date = DateTime.tryParse(value);
+
+  if (date == null) {
+    throw FormatException('$context no contiene una fecha válida para "$key".');
+  }
+
+  return date;
 }

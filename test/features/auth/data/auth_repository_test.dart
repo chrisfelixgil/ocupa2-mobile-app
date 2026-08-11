@@ -3,6 +3,7 @@ import 'package:ocupa2/core/network/api_exception.dart';
 import 'package:ocupa2/core/storage/token_storage.dart';
 import 'package:ocupa2/features/auth/data/models/auth_response.dart';
 import 'package:ocupa2/features/auth/data/models/change_password_request.dart';
+import 'package:ocupa2/features/auth/data/models/complete_profile_request.dart';
 import 'package:ocupa2/features/auth/data/models/forgot_password_request.dart';
 import 'package:ocupa2/features/auth/data/models/login_request.dart';
 import 'package:ocupa2/features/auth/data/models/message_response.dart';
@@ -27,11 +28,14 @@ void main() {
         firstName: 'Christian',
         lastName: 'Gil',
         nombre: 'Christian Gil',
+        cedula: '40212345678',
+        gender: 'masculino',
+        birthDate: DateTime(2004, 5, 17),
+        profileCompleted: true,
         referralMatricula: '20121036',
         role: 'user',
         createdAt: DateTime.parse('2026-07-16T22:00:36+00:00'),
         lastLoginAt: DateTime.parse('2026-07-16T22:01:31+00:00'),
-        updatedAt: DateTime.parse('2026-07-16T22:00:36+00:00'),
       );
 
       authResponse = AuthResponse(
@@ -107,6 +111,22 @@ void main() {
       final User result = await repository.getCurrentUser();
 
       expect(result, same(user));
+    });
+
+    test('completa el perfil y vuelve a obtener el usuario', () async {
+      final CompleteProfileRequest request = CompleteProfileRequest(
+        firstName: 'Christian',
+        lastName: 'Gil',
+        cedula: '40212345678',
+        gender: 'masculino',
+        birthDate: DateTime(2004, 5, 17),
+      );
+
+      final User result = await repository.completeProfile(request);
+
+      expect(result, same(user));
+      expect(authService.lastCompleteProfileRequest, same(request));
+      expect(authService.getCurrentUserCalls, 1);
     });
 
     test('cambia la contraseña mediante el servicio', () async {
@@ -209,8 +229,10 @@ class FakeAuthService implements AuthService {
   LoginRequest? lastLoginRequest;
   ForgotPasswordRequest? lastForgotPasswordRequest;
   ChangePasswordRequest? lastChangePasswordRequest;
+  CompleteProfileRequest? lastCompleteProfileRequest;
 
   Object? loginError;
+  int getCurrentUserCalls = 0;
 
   @override
   Future<AuthResponse> register(RegisterRequest request) async {
@@ -239,7 +261,13 @@ class FakeAuthService implements AuthService {
 
   @override
   Future<User> getCurrentUser() async {
+    getCurrentUserCalls++;
     return currentUser;
+  }
+
+  @override
+  Future<void> completeProfile(CompleteProfileRequest request) async {
+    lastCompleteProfileRequest = request;
   }
 
   @override

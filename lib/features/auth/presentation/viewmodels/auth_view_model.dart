@@ -2,10 +2,12 @@
 import 'package:ocupa2/core/network/api_exception.dart';
 import 'package:ocupa2/features/auth/data/models/auth_response.dart';
 import 'package:ocupa2/features/auth/data/models/change_password_request.dart';
+import 'package:ocupa2/features/auth/data/models/complete_profile_request.dart';
 import 'package:ocupa2/features/auth/data/models/forgot_password_request.dart';
 import 'package:ocupa2/features/auth/data/models/login_request.dart';
 import 'package:ocupa2/features/auth/data/models/message_response.dart';
 import 'package:ocupa2/features/auth/data/models/register_request.dart';
+import 'package:ocupa2/features/auth/data/models/user.dart';
 import 'package:ocupa2/features/auth/data/repositories/auth_repository.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/auth_action_status.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.dart';
@@ -38,7 +40,11 @@ class AuthViewModel extends ChangeNotifier {
     return _errorMessage != null || _successMessage != null;
   }
 
-  Future<bool> login({required String email, required String password}) {
+  Future<bool> login({
+    required String email,
+    required String password,
+    bool requirePasswordChange = false,
+  }) {
     return _execute<AuthResponse>(
       operation: () {
         return _authRepository.login(
@@ -49,7 +55,10 @@ class AuthViewModel extends ChangeNotifier {
         return 'Inicio de sesión correcto.';
       },
       onSuccess: (AuthResponse response) {
-        _sessionViewModel.setAuthenticatedUser(response.user);
+        _sessionViewModel.setAuthenticatedUser(
+          response.user,
+          requirePasswordChange: requirePasswordChange,
+        );
       },
     );
   }
@@ -101,6 +110,32 @@ class AuthViewModel extends ChangeNotifier {
     );
   }
 
+  Future<bool> completeProfile({
+    required String firstName,
+    required String lastName,
+    required String cedula,
+    required String gender,
+    required DateTime birthDate,
+  }) {
+    return _execute<User>(
+      operation: () {
+        return _authRepository.completeProfile(
+          CompleteProfileRequest(
+            firstName: firstName,
+            lastName: lastName,
+            cedula: cedula,
+            gender: gender,
+            birthDate: birthDate,
+          ),
+        );
+      },
+      successMessageBuilder: (_) {
+        return 'El perfil fue completado correctamente.';
+      },
+      onSuccess: _sessionViewModel.setAuthenticatedUser,
+    );
+  }
+
   Future<bool> changePassword({required String password}) {
     return _execute<MessageResponse>(
       operation: () {
@@ -110,6 +145,9 @@ class AuthViewModel extends ChangeNotifier {
       },
       successMessageBuilder: (MessageResponse response) {
         return response.message;
+      },
+      onSuccess: (_) {
+        _sessionViewModel.clearPasswordChangeRequirement();
       },
     );
   }

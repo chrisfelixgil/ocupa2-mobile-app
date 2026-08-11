@@ -43,7 +43,10 @@ void main() {
       eventBus.dispose();
     });
 
-    Future<void> buildView(WidgetTester tester) async {
+    Future<void> buildView(
+      WidgetTester tester, {
+      bool isRequired = false,
+    }) async {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
@@ -54,7 +57,7 @@ void main() {
           ],
           child: MaterialApp(
             theme: AppTheme.light,
-            home: const ChangePasswordView(),
+            home: ChangePasswordView(isRequired: isRequired),
           ),
         ),
       );
@@ -134,6 +137,23 @@ void main() {
       expect(repository.changePasswordCalls, 1);
       expect(repository.lastChangePasswordRequest?.password, 'nuevaClave123');
       expect(find.text('Clave actualizada.'), findsOneWidget);
+    });
+
+    testWidgets('muestra el modo obligatorio tras clave temporal', (
+      WidgetTester tester,
+    ) async {
+      sessionViewModel.setAuthenticatedUser(
+        repository.currentUser,
+        requirePasswordChange: true,
+      );
+
+      await buildView(tester, isRequired: true);
+
+      expect(find.text('Actualiza tu clave temporal'), findsOneWidget);
+      expect(
+        find.byKey(const Key('change_password_logout_button')),
+        findsOneWidget,
+      );
     });
   });
 }

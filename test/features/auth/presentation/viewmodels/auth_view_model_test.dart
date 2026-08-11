@@ -73,6 +73,56 @@ void main() {
       expect(repository.lastRegisterRequest?.referralMatricula, '20121036');
     });
 
+    test('completar perfil actualiza el usuario de la sesión', () async {
+      repository.currentUser = buildTestUser(profileCompleted: false);
+      repository.completedProfileUser = buildTestUser();
+      sessionViewModel.setAuthenticatedUser(repository.currentUser);
+
+      final bool result = await authViewModel.completeProfile(
+        firstName: 'Christian',
+        lastName: 'Gil',
+        cedula: '40212345678',
+        gender: 'masculino',
+        birthDate: DateTime(2004, 5, 17),
+      );
+
+      expect(result, isTrue);
+      expect(repository.completeProfileCalls, 1);
+      expect(
+        repository.lastCompleteProfileRequest?.birthDate,
+        DateTime(2004, 5, 17),
+      );
+      expect(sessionViewModel.user?.profileCompleted, isTrue);
+    });
+
+    test(
+      'mantiene el perfil pendiente cuando el API rechaza los datos',
+      () async {
+        repository.currentUser = buildTestUser(profileCompleted: false);
+        repository.completeProfileError = const ApiException(
+          type: ApiExceptionType.validation,
+          statusCode: 422,
+          message: 'Los datos del perfil no son válidos.',
+        );
+        sessionViewModel.setAuthenticatedUser(repository.currentUser);
+
+        final bool result = await authViewModel.completeProfile(
+          firstName: 'Christian',
+          lastName: 'Gil',
+          cedula: '40212345678',
+          gender: 'masculino',
+          birthDate: DateTime(2004, 5, 17),
+        );
+
+        expect(result, isFalse);
+        expect(
+          authViewModel.errorMessage,
+          'Los datos del perfil no son válidos.',
+        );
+        expect(sessionViewModel.user?.profileCompleted, isFalse);
+      },
+    );
+
     test('login incorrecto muestra error del API', () async {
       repository.loginError = const ApiException(
         type: ApiExceptionType.unauthorized,
@@ -124,6 +174,11 @@ void main() {
     });
 
     test('cambia la contraseña y muestra mensaje del servidor', () async {
+      sessionViewModel.setAuthenticatedUser(
+        repository.currentUser,
+        requirePasswordChange: true,
+      );
+
       final bool result = await authViewModel.changePassword(
         password: 'nuevaClave123',
       );
@@ -133,7 +188,22 @@ void main() {
       expect(authViewModel.successMessage, 'Clave actualizada.');
       expect(repository.changePasswordCalls, 1);
       expect(repository.lastChangePasswordRequest?.password, 'nuevaClave123');
+      expect(sessionViewModel.requiresPasswordChange, isFalse);
     });
+
+    test(
+      'login con recuperación marca cambio de contraseña obligatorio',
+      () async {
+        final bool result = await authViewModel.login(
+          email: 'usuario@itla.edu.do',
+          password: 'EC8C71C6',
+          requirePasswordChange: true,
+        );
+
+        expect(result, isTrue);
+        expect(sessionViewModel.requiresPasswordChange, isTrue);
+      },
+    );
 
     test('muestra error cuando falla el cambio de contraseña', () async {
       repository.changePasswordError = const ApiException(

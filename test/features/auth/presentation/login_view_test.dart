@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ocupa2/app/router/app_routes.dart';
+import 'package:ocupa2/app/router/route_paths.dart';
 import 'package:ocupa2/app/theme/app_theme.dart';
 import 'package:ocupa2/core/session/session_event_bus.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/auth_status.dart';
@@ -39,7 +43,41 @@ void main() {
       eventBus.dispose();
     });
 
-    Future<void> buildLogin(WidgetTester tester) async {
+    Future<void> buildLogin(
+      WidgetTester tester, {
+      String? initialEmail,
+      bool fromPasswordRecovery = false,
+    }) async {
+      final GoRouter router = GoRouter(
+        initialLocation: RoutePaths.login,
+        routes: <RouteBase>[
+          GoRoute(
+            path: RoutePaths.login,
+            name: AppRouteNames.login,
+            builder: (BuildContext context, GoRouterState state) {
+              return LoginView(
+                initialEmail: initialEmail,
+                fromPasswordRecovery: fromPasswordRecovery,
+              );
+            },
+          ),
+          GoRoute(
+            path: RoutePaths.register,
+            name: AppRouteNames.register,
+            builder: (BuildContext context, GoRouterState state) {
+              return const SizedBox.shrink();
+            },
+          ),
+          GoRoute(
+            path: RoutePaths.forgotPassword,
+            name: AppRouteNames.forgotPassword,
+            builder: (BuildContext context, GoRouterState state) {
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
+      );
+
       await tester.pumpWidget(
         MultiProvider(
           providers: [
@@ -47,12 +85,18 @@ void main() {
               value: sessionViewModel,
             ),
             ChangeNotifierProvider<AuthViewModel>.value(value: authViewModel),
+            Provider<GoRouter>.value(value: router),
           ],
-          child: MaterialApp(theme: AppTheme.light, home: const LoginView()),
+          child: MaterialApp.router(
+            theme: AppTheme.light,
+            routerConfig: router,
+          ),
         ),
       );
 
-      await tester.pump();
+      await tester.pumpAndSettle();
+
+      addTearDown(router.dispose);
     }
 
     testWidgets('muestra sus campos y botón', (WidgetTester tester) async {
@@ -100,6 +144,28 @@ void main() {
       expect(repository.loginCalls, 1);
       expect(repository.lastLoginRequest?.email, 'usuario@itla.edu.do');
       expect(sessionViewModel.status, AuthStatus.authenticated);
+    });
+
+    testWidgets('muestra guía de clave temporal tras recuperación', (
+      WidgetTester tester,
+    ) async {
+      await buildLogin(
+        tester,
+        initialEmail: 'usuario@itla.edu.do',
+        fromPasswordRecovery: true,
+      );
+
+      expect(
+        find.text('Revisa tu correo e inicia sesión con la clave temporal.'),
+        findsOneWidget,
+      );
+      expect(find.text('Clave temporal'), findsOneWidget);
+
+      final FormBuilderState formState = tester.state<FormBuilderState>(
+        find.byType(FormBuilder),
+      );
+
+      expect(formState.fields['email']?.value, 'usuario@itla.edu.do');
     });
   });
 }

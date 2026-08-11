@@ -108,6 +108,20 @@ void main() {
 
       expect(viewModel.status, AuthStatus.authenticated);
       expect(viewModel.user, same(repository.currentUser));
+      expect(viewModel.requiresPasswordChange, isFalse);
+    });
+
+    test('marca el cambio de contraseña obligatorio tras recuperación', () {
+      viewModel.setAuthenticatedUser(
+        repository.currentUser,
+        requirePasswordChange: true,
+      );
+
+      expect(viewModel.requiresPasswordChange, isTrue);
+
+      viewModel.clearPasswordChangeRequirement();
+
+      expect(viewModel.requiresPasswordChange, isFalse);
     });
 
     test('permite reintentar después de un error', () async {

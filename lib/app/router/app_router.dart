@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ocupa2/app/router/app_routes.dart';
 import 'package:ocupa2/app/router/route_error_view.dart';
@@ -6,6 +6,7 @@ import 'package:ocupa2/app/router/route_paths.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/auth_status.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.dart';
 import 'package:ocupa2/features/auth/presentation/views/change_password_view.dart';
+import 'package:ocupa2/features/auth/presentation/views/complete_profile_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/forgot_password_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/login_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/register_view.dart';
@@ -35,7 +36,10 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
         path: RoutePaths.login,
         name: AppRouteNames.login,
         builder: (BuildContext context, GoRouterState state) {
-          return const LoginView();
+          return LoginView(
+            initialEmail: state.uri.queryParameters['email'],
+            fromPasswordRecovery: state.uri.queryParameters['recovered'] == '1',
+          );
         },
       ),
       GoRoute(
@@ -53,6 +57,13 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
         },
       ),
       GoRoute(
+        path: RoutePaths.completeProfile,
+        name: AppRouteNames.completeProfile,
+        builder: (BuildContext context, GoRouterState state) {
+          return const CompleteProfileView();
+        },
+      ),
+      GoRoute(
         path: RoutePaths.home,
         name: AppRouteNames.home,
         builder: (BuildContext context, GoRouterState state) {
@@ -63,7 +74,9 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
         path: RoutePaths.changePassword,
         name: AppRouteNames.changePassword,
         builder: (BuildContext context, GoRouterState state) {
-          return const ChangePasswordView();
+          return ChangePasswordView(
+            isRequired: sessionViewModel.requiresPasswordChange,
+          );
         },
       ),
       ...jobSearchRoutes(),
@@ -87,6 +100,9 @@ String? _redirectForSession({
       location == RoutePaths.register ||
       location == RoutePaths.forgotPassword;
 
+  final bool isCompleteProfileRoute = location == RoutePaths.completeProfile;
+  final bool isChangePasswordRoute = location == RoutePaths.changePassword;
+
   switch (sessionViewModel.status) {
     case AuthStatus.checking:
       return isSplash ? null : RoutePaths.splash;
@@ -98,7 +114,18 @@ String? _redirectForSession({
       return isPublicAuthRoute ? null : RoutePaths.login;
 
     case AuthStatus.authenticated:
-      if (isSplash || isPublicAuthRoute) {
+      if (sessionViewModel.requiresPasswordChange) {
+        return isChangePasswordRoute ? null : RoutePaths.changePassword;
+      }
+
+      final bool profileCompleted =
+          sessionViewModel.user?.profileCompleted == true;
+
+      if (!profileCompleted) {
+        return isCompleteProfileRoute ? null : RoutePaths.completeProfile;
+      }
+
+      if (isSplash || isPublicAuthRoute || isCompleteProfileRoute) {
         return RoutePaths.home;
       }
 

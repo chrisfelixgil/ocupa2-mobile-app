@@ -5,6 +5,7 @@ import 'package:ocupa2/core/network/api_response.dart';
 import 'package:ocupa2/core/network/request_auth.dart';
 import 'package:ocupa2/features/auth/data/models/auth_response.dart';
 import 'package:ocupa2/features/auth/data/models/change_password_request.dart';
+import 'package:ocupa2/features/auth/data/models/complete_profile_request.dart';
 import 'package:ocupa2/features/auth/data/models/forgot_password_request.dart';
 import 'package:ocupa2/features/auth/data/models/login_request.dart';
 import 'package:ocupa2/features/auth/data/models/message_response.dart';
@@ -61,6 +62,15 @@ class AuthServiceImpl implements AuthService {
     );
 
     return _parseSuccess<User>(rawResponse, User.fromJson);
+  }
+
+  @override
+  Future<void> completeProfile(CompleteProfileRequest request) async {
+    await _apiClient.put(
+      ApiEndpoints.completeProfile,
+      auth: RequestAuth.protected,
+      data: request.toJson(),
+    );
   }
 
   @override
