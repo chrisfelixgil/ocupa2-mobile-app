@@ -21,6 +21,9 @@ import 'package:ocupa2/features/job_search/data/repositories/job_search_reposito
 import 'package:ocupa2/features/job_search/data/services/job_search_service.dart';
 import 'package:ocupa2/features/job_search/data/services/job_search_service_impl.dart';
 import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offers_view_model.dart';
+import 'package:ocupa2/features/my_activity/data/repositories/experience_repository.dart';
+import 'package:ocupa2/features/my_activity/data/services/experience_service.dart';
+import 'package:ocupa2/features/my_activity/presentation/viewmodels/experiences_view_model.dart';
 import 'package:provider/provider.dart';
 
 class AppProviders extends StatelessWidget {
@@ -112,6 +115,25 @@ class AppProviders extends StatelessWidget {
           create: (BuildContext context) {
             return ExploreOffersViewModel(
               jobSearchRepository: context.read<JobSearchRepository>(),
+            );
+          },
+        ),
+        Provider<ExperienceService>(
+          create: (BuildContext context) {
+            return ExperienceServiceImpl(apiClient: context.read<ApiClient>());
+          },
+        ),
+        Provider<ExperienceRepository>(
+          create: (BuildContext context) {
+            return ExperienceRepository(
+              experienceService: context.read<ExperienceService>(),
+            );
+          },
+        ),
+        ChangeNotifierProvider<ExperiencesViewModel>(
+          create: (BuildContext context) {
+            return ExperiencesViewModel(
+              experienceRepository: context.read<ExperienceRepository>(),
             );
           },
         ),

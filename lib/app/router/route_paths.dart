@@ -7,6 +7,9 @@ abstract final class RoutePaths {
   static const String home = '/home';
   static const String changePassword = '/change-password';
 
+  // my_activity
+  static const String myExperiences = '/my-activity/experiences';
+
   // job_search
   static const String jobSearchExplore = '/offers';
   static const String jobSearchMap = '/offers/map';

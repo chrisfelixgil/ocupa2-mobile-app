@@ -9,6 +9,9 @@ abstract final class ApiEndpoints {
 
   static const String uploads = '/uploads';
   static const String jobTypes = '/job-types';
+  static const String myExperiences = '/me/experiences';
+
+  static String experienceById(String id) => '/me/experiences/$id';
 
   static const String offers = '/offers';
 
