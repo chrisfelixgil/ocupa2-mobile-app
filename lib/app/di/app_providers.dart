@@ -14,6 +14,13 @@ import 'package:ocupa2/features/auth/data/services/auth_service.dart';
 import 'package:ocupa2/features/auth/data/services/auth_service_impl.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/auth_view_model.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.dart';
+import 'package:ocupa2/features/catalog/data/repositories/catalog_repository.dart';
+import 'package:ocupa2/features/catalog/data/services/catalog_service.dart';
+import 'package:ocupa2/features/job_search/data/repositories/job_search_repository.dart';
+import 'package:ocupa2/features/job_search/data/repositories/job_search_repository_impl.dart';
+import 'package:ocupa2/features/job_search/data/services/job_search_service.dart';
+import 'package:ocupa2/features/job_search/data/services/job_search_service_impl.dart';
+import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offers_view_model.dart';
 import 'package:provider/provider.dart';
 
 class AppProviders extends StatelessWidget {
@@ -74,6 +81,37 @@ class AppProviders extends StatelessWidget {
             return AuthViewModel(
               authRepository: context.read<AuthRepository>(),
               sessionViewModel: context.read<SessionViewModel>(),
+            );
+          },
+        ),
+        Provider<CatalogService>(
+          create: (BuildContext context) {
+            return CatalogServiceImpl(apiClient: context.read<ApiClient>());
+          },
+        ),
+        Provider<CatalogRepository>(
+          create: (BuildContext context) {
+            return CatalogRepository(
+              catalogService: context.read<CatalogService>(),
+            );
+          },
+        ),
+        Provider<JobSearchService>(
+          create: (BuildContext context) {
+            return JobSearchServiceImpl(apiClient: context.read<ApiClient>());
+          },
+        ),
+        Provider<JobSearchRepository>(
+          create: (BuildContext context) {
+            return JobSearchRepositoryImpl(
+              jobSearchService: context.read<JobSearchService>(),
+            );
+          },
+        ),
+        ChangeNotifierProvider<ExploreOffersViewModel>(
+          create: (BuildContext context) {
+            return ExploreOffersViewModel(
+              jobSearchRepository: context.read<JobSearchRepository>(),
             );
           },
         ),
