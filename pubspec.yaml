@@ -19,6 +19,7 @@ dependencies:
   form_builder_validators: ^11.3.0
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -30,6 +31,7 @@ flutter:
 
   assets:
     - .env
+    - assets/images/team/
 
   fonts:
     - family: PlusJakartaSans

@@ -11,6 +11,7 @@ import 'package:ocupa2/features/auth/presentation/views/forgot_password_view.dar
 import 'package:ocupa2/features/auth/presentation/views/login_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/register_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/session_ready_view.dart';
+import 'package:ocupa2/features/about/presentation/routes/about_routes.dart';
 import 'package:ocupa2/features/auth/presentation/views/splash_view.dart';
 import 'package:ocupa2/features/job_search/presentation/routes/job_search_routes.dart';
 
@@ -80,6 +81,7 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
         },
       ),
       ...jobSearchRoutes(),
+      ...aboutRoutes(),
     ],
     errorBuilder: (BuildContext context, GoRouterState state) {
       return const RouteErrorView();

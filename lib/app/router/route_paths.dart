@@ -6,6 +6,7 @@ abstract final class RoutePaths {
   static const String completeProfile = '/complete-profile';
   static const String home = '/home';
   static const String changePassword = '/change-password';
+  static const String about = '/about';
 
   // job_search
   static const String jobSearchExplore = '/offers';

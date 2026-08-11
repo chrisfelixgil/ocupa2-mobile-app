@@ -148,6 +148,15 @@ class SessionReadyView extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   OutlinedButton.icon(
+                    key: const Key('open_about_button'),
+                    onPressed: () {
+                      context.pushNamed(AppRouteNames.about);
+                    },
+                    icon: const Icon(Icons.info_outline_rounded),
+                    label: const Text('Acerca de'),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  OutlinedButton.icon(
                     key: const Key('logout_button'),
                     onPressed: session.isLoggingOut
                         ? null
