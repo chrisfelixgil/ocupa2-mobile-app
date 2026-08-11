@@ -148,6 +148,33 @@ class SessionReadyView extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   OutlinedButton.icon(
+                    key: const Key('open_my_experiences_button'),
+                    onPressed: () {
+                      context.pushNamed(AppRouteNames.myExperiences);
+                    },
+                    icon: const Icon(Icons.work_history_outlined),
+                    label: const Text('Mis experiencias'),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  OutlinedButton.icon(
+                    key: const Key('open_my_applications_button'),
+                    onPressed: () {
+                      context.pushNamed(AppRouteNames.myApplications);
+                    },
+                    icon: const Icon(Icons.assignment_outlined),
+                    label: const Text('Mis aplicaciones'),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  OutlinedButton.icon(
+                    key: const Key('open_my_contracts_button'),
+                    onPressed: () {
+                      context.pushNamed(AppRouteNames.myContracts);
+                    },
+                    icon: const Icon(Icons.description_rounded),
+                    label: const Text('Mis contratos'),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  OutlinedButton.icon(
                     key: const Key('logout_button'),
                     onPressed: session.isLoggingOut
                         ? null

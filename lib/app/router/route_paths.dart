@@ -9,6 +9,11 @@ abstract final class RoutePaths {
 
   // my_activity
   static const String myExperiences = '/my-activity/experiences';
+  static const String myApplications = '/my-activity/applications';
+  static const String myContracts = '/my-activity/contracts';
+  static const String contractDetailPattern = '/my-activity/contracts/:id';
+
+  static String contractDetail(String id) => '/my-activity/contracts/$id';
 
   // job_search
   static const String jobSearchExplore = '/offers';

@@ -9,6 +9,9 @@ abstract final class AppRouteNames {
 
   // my_activity
   static const String myExperiences = 'my-experiences';
+  static const String myApplications = 'my-applications';
+  static const String myContracts = 'my-contracts';
+  static const String contractDetail = 'contract-detail';
 
   // job_search
   static const String jobSearchExplore = 'job-search-explore';
