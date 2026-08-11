@@ -47,10 +47,20 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
     }
 
     final Map<String, dynamic> values = formState.value;
+    final String email = values[_emailField] as String;
 
-    await context.read<AuthViewModel>().forgotPassword(
-      email: values[_emailField] as String,
+    final bool success = await context.read<AuthViewModel>().forgotPassword(
+      email: email,
       referralMatricula: values[_referralMatriculaField] as String,
+    );
+
+    if (!success || !mounted) {
+      return;
+    }
+
+    context.goNamed(
+      AppRouteNames.login,
+      queryParameters: <String, String>{'email': email, 'recovered': '1'},
     );
   }
 
@@ -62,7 +72,8 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
       icon: Icons.key_rounded,
       title: 'Recupera tu contraseña',
       subtitle:
-          'Ingresa el correo y la matrícula de referido utilizados al crear la cuenta.',
+          'Ingresa el correo y la matrícula de referido. Si coinciden, '
+          'recibirás una clave temporal por correo para iniciar sesión.',
       footer: Wrap(
         alignment: WrapAlignment.center,
         crossAxisAlignment: WrapCrossAlignment.center,

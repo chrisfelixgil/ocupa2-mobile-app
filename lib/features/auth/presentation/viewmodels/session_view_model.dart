@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:ocupa2/core/network/api_exception.dart';
@@ -29,6 +29,7 @@ class SessionViewModel extends ChangeNotifier {
   bool _isRestoring = false;
   bool _isLoggingOut = false;
   bool _isDisposed = false;
+  bool _requiresPasswordChange = false;
 
   int _operationId = 0;
 
@@ -51,6 +52,8 @@ class SessionViewModel extends ChangeNotifier {
   }
 
   bool get isLoggingOut => _isLoggingOut;
+
+  bool get requiresPasswordChange => _requiresPasswordChange;
 
   Future<void> restoreSession() async {
     if (_isDisposed || _isRestoring || _isLoggingOut) {
@@ -109,7 +112,7 @@ class SessionViewModel extends ChangeNotifier {
     }
   }
 
-  void setAuthenticatedUser(User user) {
+  void setAuthenticatedUser(User user, {bool requirePasswordChange = false}) {
     if (_isDisposed) {
       return;
     }
@@ -118,8 +121,18 @@ class SessionViewModel extends ChangeNotifier {
 
     _isRestoring = false;
     _isLoggingOut = false;
+    _requiresPasswordChange = requirePasswordChange;
 
     _setAuthenticated(user);
+  }
+
+  void clearPasswordChangeRequirement() {
+    if (_isDisposed || !_requiresPasswordChange) {
+      return;
+    }
+
+    _requiresPasswordChange = false;
+    _notifySafely();
   }
 
   Future<bool> logout() async {
@@ -233,6 +246,7 @@ class SessionViewModel extends ChangeNotifier {
     _user = null;
     _errorMessage = null;
     _sessionActionErrorMessage = null;
+    _requiresPasswordChange = false;
 
     _notifySafely();
   }
@@ -251,6 +265,7 @@ class SessionViewModel extends ChangeNotifier {
     _user = null;
     _errorMessage = null;
     _sessionActionErrorMessage = null;
+    _requiresPasswordChange = false;
 
     _notifySafely();
   }
@@ -260,6 +275,7 @@ class SessionViewModel extends ChangeNotifier {
     _user = null;
     _errorMessage = message;
     _sessionActionErrorMessage = null;
+    _requiresPasswordChange = false;
 
     _notifySafely();
   }

@@ -13,7 +13,14 @@ import 'package:ocupa2/features/auth/presentation/widgets/password_field.dart';
 import 'package:provider/provider.dart';
 
 class LoginView extends StatefulWidget {
-  const LoginView({super.key});
+  const LoginView({
+    this.initialEmail,
+    this.fromPasswordRecovery = false,
+    super.key,
+  });
+
+  final String? initialEmail;
+  final bool fromPasswordRecovery;
 
   @override
   State<LoginView> createState() {
@@ -52,6 +59,7 @@ class _LoginViewState extends State<LoginView> {
     final bool success = await context.read<AuthViewModel>().login(
       email: values[_emailField] as String,
       password: values[_passwordField] as String,
+      requirePasswordChange: widget.fromPasswordRecovery,
     );
 
     if (success && mounted) {
@@ -66,7 +74,10 @@ class _LoginViewState extends State<LoginView> {
     return AuthPageLayout(
       icon: Icons.lock_outline_rounded,
       title: 'Inicia sesión en Ocupa2',
-      subtitle: 'Accede con tu correo electrónico y contraseña.',
+      subtitle: widget.fromPasswordRecovery
+          ? 'Usa la clave temporal enviada a tu correo. '
+                'Después cámbiala desde Cambiar contraseña.'
+          : 'Accede con tu correo electrónico y contraseña.',
       footer: Wrap(
         alignment: WrapAlignment.center,
         crossAxisAlignment: WrapCrossAlignment.center,
@@ -88,9 +99,17 @@ class _LoginViewState extends State<LoginView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
+              if (widget.fromPasswordRecovery) ...<Widget>[
+                const AuthFeedbackMessage(
+                  successMessage:
+                      'Revisa tu correo e inicia sesión con la clave temporal.',
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
               FormBuilderTextField(
                 key: const Key('login_email_field'),
                 name: _emailField,
+                initialValue: widget.initialEmail,
                 enabled: !authViewModel.isLoading,
                 validator: AppValidators.email(),
                 autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -112,7 +131,9 @@ class _LoginViewState extends State<LoginView> {
               PasswordField(
                 key: const Key('login_password_field'),
                 name: _passwordField,
-                label: 'Contraseña',
+                label: widget.fromPasswordRecovery
+                    ? 'Clave temporal'
+                    : 'Contraseña',
                 enabled: !authViewModel.isLoading,
                 validator: AppValidators.loginPassword(),
                 autofillHints: const <String>[AutofillHints.password],

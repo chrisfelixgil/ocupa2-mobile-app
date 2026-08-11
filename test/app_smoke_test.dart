@@ -121,4 +121,133 @@ void main() {
     sessionViewModel.dispose();
     eventBus.dispose();
   });
+
+  testWidgets('obliga a completar el perfil antes de entrar al área privada', (
+    WidgetTester tester,
+  ) async {
+    final SessionEventBus eventBus = SessionEventBus();
+
+    final FakeAuthRepository repository = FakeAuthRepository(
+      currentUser: buildTestUser(profileCompleted: false),
+      completedProfileUser: buildTestUser(),
+      hasSession: true,
+    );
+
+    final SessionViewModel sessionViewModel = SessionViewModel(
+      authRepository: repository,
+      sessionEventBus: eventBus,
+    );
+
+    await sessionViewModel.restoreSession();
+
+    final AuthViewModel authViewModel = AuthViewModel(
+      authRepository: repository,
+      sessionViewModel: sessionViewModel,
+    );
+
+    final GoRouter router = createAppRouter(sessionViewModel);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<SessionViewModel>.value(
+            value: sessionViewModel,
+          ),
+          ChangeNotifierProvider<AuthViewModel>.value(value: authViewModel),
+          Provider<GoRouter>.value(value: router),
+        ],
+        child: const Ocupa2App(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Completa tu perfil'), findsOneWidget);
+
+    router.go(RoutePaths.home);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Completa tu perfil'), findsOneWidget);
+
+    sessionViewModel.setAuthenticatedUser(buildTestUser());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sesión activa'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+
+    router.dispose();
+    authViewModel.dispose();
+    sessionViewModel.dispose();
+    eventBus.dispose();
+  });
+
+  testWidgets('obliga a cambiar la contraseña tras login con clave temporal', (
+    WidgetTester tester,
+  ) async {
+    final SessionEventBus eventBus = SessionEventBus();
+
+    final FakeAuthRepository repository = FakeAuthRepository(
+      currentUser: buildTestUser(),
+      hasSession: false,
+    );
+
+    final SessionViewModel sessionViewModel = SessionViewModel(
+      authRepository: repository,
+      sessionEventBus: eventBus,
+    );
+
+    await sessionViewModel.restoreSession();
+
+    final AuthViewModel authViewModel = AuthViewModel(
+      authRepository: repository,
+      sessionViewModel: sessionViewModel,
+    );
+
+    final GoRouter router = createAppRouter(sessionViewModel);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<SessionViewModel>.value(
+            value: sessionViewModel,
+          ),
+          ChangeNotifierProvider<AuthViewModel>.value(value: authViewModel),
+          Provider<GoRouter>.value(value: router),
+        ],
+        child: const Ocupa2App(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final bool success = await authViewModel.login(
+      email: 'usuario@itla.edu.do',
+      password: 'EC8C71C6',
+      requirePasswordChange: true,
+    );
+
+    expect(success, isTrue);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Actualiza tu clave temporal'), findsOneWidget);
+
+    router.go(RoutePaths.home);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Actualiza tu clave temporal'), findsOneWidget);
+
+    sessionViewModel.clearPasswordChangeRequirement();
+    router.go(RoutePaths.home);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sesión activa'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+
+    router.dispose();
+    authViewModel.dispose();
+    sessionViewModel.dispose();
+    eventBus.dispose();
+  });
 }

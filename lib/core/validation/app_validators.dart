@@ -24,6 +24,65 @@ abstract final class AppValidators {
     ]);
   }
 
+  static FormFieldValidator<String> profileName(String fieldName) {
+    return FormBuilderValidators.compose([
+      requiredText(fieldName),
+      (String? value) {
+        final String normalizedValue = value?.trim() ?? '';
+
+        if (normalizedValue.isNotEmpty && normalizedValue.length < 2) {
+          return '$fieldName debe tener al menos 2 caracteres.';
+        }
+
+        return null;
+      },
+    ]);
+  }
+
+  static FormFieldValidator<String> cedula() {
+    return FormBuilderValidators.compose([
+      FormBuilderValidators.required(errorText: 'La cédula es obligatoria.'),
+      (String? value) {
+        final String normalizedValue = (value ?? '').replaceAll(
+          RegExp(r'[\s-]'),
+          '',
+        );
+
+        if (normalizedValue.isEmpty) {
+          return null;
+        }
+
+        if (!RegExp(r'^\d{11}$').hasMatch(normalizedValue)) {
+          return 'La cédula debe contener 11 dígitos.';
+        }
+
+        return null;
+      },
+    ]);
+  }
+
+  static FormFieldValidator<String> gender() {
+    return FormBuilderValidators.required(
+      errorText: 'El género es obligatorio.',
+    );
+  }
+
+  static FormFieldValidator<DateTime> birthDate() {
+    return (DateTime? value) {
+      if (value == null) {
+        return 'La fecha de nacimiento es obligatoria.';
+      }
+
+      final DateTime today = DateUtils.dateOnly(DateTime.now());
+
+      if (DateUtils.dateOnly(value).isAfter(today)) {
+        return 'La fecha de nacimiento no puede ser futura.';
+      }
+
+      return null;
+    };
+  }
+
   static FormFieldValidator<String> loginPassword() {
     return FormBuilderValidators.required(
       errorText: 'La contraseña es obligatoria.',

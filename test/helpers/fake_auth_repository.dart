@@ -1,5 +1,6 @@
 import 'package:ocupa2/features/auth/data/models/auth_response.dart';
 import 'package:ocupa2/features/auth/data/models/change_password_request.dart';
+import 'package:ocupa2/features/auth/data/models/complete_profile_request.dart';
 import 'package:ocupa2/features/auth/data/models/forgot_password_request.dart';
 import 'package:ocupa2/features/auth/data/models/login_request.dart';
 import 'package:ocupa2/features/auth/data/models/message_response.dart';
@@ -12,6 +13,7 @@ class FakeAuthRepository implements AuthRepository {
     required this.currentUser,
     this.hasSession = false,
     AuthResponse? authResponse,
+    User? completedProfileUser,
     MessageResponse? forgotPasswordResponse,
     MessageResponse? changePasswordResponse,
   }) : authResponse =
@@ -21,6 +23,7 @@ class FakeAuthRepository implements AuthRepository {
              tokenType: 'Bearer',
              user: currentUser,
            ),
+       completedProfileUser = completedProfileUser ?? currentUser,
        forgotPasswordResponse =
            forgotPasswordResponse ??
            const MessageResponse(
@@ -33,6 +36,7 @@ class FakeAuthRepository implements AuthRepository {
 
   bool hasSession;
   User currentUser;
+  User completedProfileUser;
 
   final AuthResponse authResponse;
   final MessageResponse forgotPasswordResponse;
@@ -42,6 +46,7 @@ class FakeAuthRepository implements AuthRepository {
   Object? loginError;
   Object? forgotPasswordError;
   Object? getCurrentUserError;
+  Object? completeProfileError;
   Object? changePasswordError;
   Object? hasStoredSessionError;
   Object? clearSessionError;
@@ -50,12 +55,14 @@ class FakeAuthRepository implements AuthRepository {
   LoginRequest? lastLoginRequest;
   ForgotPasswordRequest? lastForgotPasswordRequest;
   ChangePasswordRequest? lastChangePasswordRequest;
+  CompleteProfileRequest? lastCompleteProfileRequest;
 
   int registerCalls = 0;
   int loginCalls = 0;
   int forgotPasswordCalls = 0;
   int getCurrentUserCalls = 0;
   int changePasswordCalls = 0;
+  int completeProfileCalls = 0;
   int clearSessionCalls = 0;
 
   @override
@@ -118,6 +125,22 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<User> completeProfile(CompleteProfileRequest request) async {
+    completeProfileCalls++;
+    lastCompleteProfileRequest = request;
+
+    final Object? error = completeProfileError;
+
+    if (error != null) {
+      throw error;
+    }
+
+    currentUser = completedProfileUser;
+
+    return currentUser;
+  }
+
+  @override
   Future<MessageResponse> changePassword(ChangePasswordRequest request) async {
     changePasswordCalls++;
     lastChangePasswordRequest = request;
@@ -156,17 +179,20 @@ class FakeAuthRepository implements AuthRepository {
   }
 }
 
-User buildTestUser() {
+User buildTestUser({bool profileCompleted = true}) {
   return User(
     id: 'usuario-123',
     email: 'usuario@itla.edu.do',
     firstName: 'Christian',
     lastName: 'Gil',
     nombre: 'Christian Gil',
+    cedula: profileCompleted ? '40212345678' : null,
+    gender: profileCompleted ? 'masculino' : null,
+    birthDate: profileCompleted ? DateTime(2004, 5, 17) : null,
+    profileCompleted: profileCompleted,
     referralMatricula: '20121036',
     role: 'user',
     createdAt: DateTime.parse('2026-07-16T22:00:36+00:00'),
     lastLoginAt: DateTime.parse('2026-07-16T22:01:31+00:00'),
-    updatedAt: DateTime.parse('2026-07-16T22:00:36+00:00'),
   );
 }
