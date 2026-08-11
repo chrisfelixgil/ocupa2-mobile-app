@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
@@ -27,12 +25,6 @@ class OfferMapView extends StatefulWidget {
 class _OfferMapViewState extends State<OfferMapView> {
   final MapController _mapController = MapController();
   Offer? _selectedOffer;
-
-  // TEMPORAL: inspeccion directa del estado interno de cada tile
-  // (opacidad, si esta listo, si tiene imagen decodificada).
-  int _tileErrorCount = 0;
-  Object? _lastTileError;
-  final Map<String, String> _tileSnapshots = <String, String>{};
 
   @override
   void initState() {
@@ -77,21 +69,6 @@ class _OfferMapViewState extends State<OfferMapView> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mapa de ofertas'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(32),
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(
-              _tileSnapshots.isEmpty
-                  ? 'Sin tiles todavia | Errores: $_tileErrorCount'
-                  : '${_tileSnapshots.length} tiles | ${_tileSnapshots.values.last}'
-                    ' | Errores: $_tileErrorCount',
-              style: const TextStyle(fontSize: 10, color: Colors.white70),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ),
       ),
       body: Stack(
         children: <Widget>[
@@ -122,45 +99,17 @@ class _OfferMapViewState extends State<OfferMapView> {
                   // servidor de tiles con un parser estricto (RFC-1123).
                   // CARTO no cumple ese formato exacto, lo que hace que el
                   // parseo falle internamente y NINGÚN tile se muestre, sin
-                  // pasar por errorTileCallback (por eso no había forma de
-                  // detectarlo desde la UI). Se desactiva ese caché para
+                  // pasar por errorTileCallback. Se desactiva ese caché para
                   // evitar el bug: https://github.com/fleaflet/flutter_map/issues/2124
                   tileProvider: NetworkTileProvider(
                     cachingProvider: const DisabledMapCachingProvider(),
                   ),
-                  // TileLayer por defecto anima la opacidad de cada tile
-                  // de 0 a 1 al cargar (TileDisplay.fadeIn()). En este
-                  // emulador esa animación parece quedarse pegada en 0
-                  // (los tiles se "construyen" y no dan error, pero nunca
-                  // se ven). Se fuerza a que aparezcan de inmediato.
+                  // Sin animación de opacidad al cargar cada tile: en
+                  // algunos entornos (emuladores con Impeller) esa
+                  // animación no siempre se completa visualmente.
                   tileDisplay: const TileDisplay.instantaneous(),
                   errorTileCallback: (TileImage tile, Object error, StackTrace? stackTrace) {
                     debugPrint('No se pudo cargar un tile del mapa: $error');
-                    if (mounted) {
-                      setState(() {
-                        _tileErrorCount++;
-                        _lastTileError = error;
-                      });
-                    }
-                  },
-                  tileBuilder: (BuildContext context, Widget tileWidget, TileImage tile) {
-                    final String key = tile.coordinates.toString();
-                    final ui.Image? decoded = tile.imageInfo?.image;
-                    final String snapshot = 'op:${tile.opacity.toStringAsFixed(2)} '
-                        'ready:${tile.readyToDisplay} '
-                        'img:${decoded != null} '
-                        '${decoded != null ? '${decoded.width}x${decoded.height}' : ''} '
-                        'err:${tile.loadError}';
-                    if (_tileSnapshots[key] != snapshot) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
-                          setState(() {
-                            _tileSnapshots[key] = snapshot;
-                          });
-                        }
-                      });
-                    }
-                    return tileWidget;
                   },
                 ),
                 RichAttributionWidget(
