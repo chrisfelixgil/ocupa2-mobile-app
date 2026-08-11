@@ -10,10 +10,18 @@ import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offer
 import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offers_view_model.dart';
 import 'package:provider/provider.dart';
 
-/// Ubicación por defecto cuando ninguna oferta trae coordenadas todavía
-/// (Santo Domingo, República Dominicana), solo para que el mapa no abra
-/// centrado en el punto (0, 0) del océano.
-const LatLng _fallbackCenter = LatLng(18.4861, -69.9312);
+/// Centro geográfico aproximado de República Dominicana. El mapa siempre
+/// abre aquí, mostrando el país completo, en vez de centrarse en la
+/// primera oferta con ubicación: algunas ofertas de prueba traen
+/// coordenadas inválidas (0,0 en medio del océano, o directamente fuera
+/// del país), y si el mapa se centraba en esa oferta, la vista inicial
+/// quedaba en medio del mar. Los marcadores igual se dibujan en sus
+/// coordenadas reales; solo la cámara inicial ya no depende de ellas.
+const LatLng _countryCenter = LatLng(18.7357, -70.1627);
+
+/// Zoom que muestra el territorio dominicano completo en una pantalla de
+/// celular.
+const double _countryZoom = 8;
 
 /// URL de tiles de CARTO Voyager (mismos datos de OpenStreetMap, pero sin
 /// las restricciones de uso del servidor directo tile.openstreetmap.org).
@@ -74,10 +82,6 @@ class _OfferMapViewState extends State<OfferMapView> {
         ? _offersWithLocation(viewModel.offers)
         : const <Offer>[];
 
-    final LatLng center = located.isNotEmpty
-        ? LatLng(located.first.latitude!, located.first.longitude!)
-        : _fallbackCenter;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Mapa de ofertas')),
       body: Stack(
@@ -85,8 +89,8 @@ class _OfferMapViewState extends State<OfferMapView> {
           Positioned.fill(
             child: _OffersMap(
               mapController: _mapController,
-              center: center,
-              initialZoom: located.isEmpty ? 12 : 13,
+              center: _countryCenter,
+              initialZoom: _countryZoom,
               offers: located,
               selectedOffer: _selectedOffer,
               onOfferTap: _selectOffer,
