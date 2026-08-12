@@ -18,8 +18,7 @@ abstract interface class ExperienceService {
 }
 
 class ExperienceServiceImpl implements ExperienceService {
-  const ExperienceServiceImpl({required ApiClient apiClient})
-      : _apiClient = apiClient;
+  const ExperienceServiceImpl({required this._apiClient});
 
   final ApiClient _apiClient;
 
@@ -48,7 +47,7 @@ class ExperienceServiceImpl implements ExperienceService {
       data: <String, String>{
         'title': title,
         'description': description,
-        if (certificateImage != null) 'certificateImage': certificateImage,
+        'certificateImage': ?certificateImage,
       },
     );
 

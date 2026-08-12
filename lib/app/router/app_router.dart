@@ -20,6 +20,8 @@ import 'package:ocupa2/features/about/presentation/routes/about_routes.dart';
 import 'package:ocupa2/features/auth/presentation/views/splash_view.dart';
 import 'package:ocupa2/features/job_search/presentation/routes/job_search_routes.dart';
 import 'package:ocupa2/features/my_activity/presentation/routes/my_activity_routes.dart';
+import 'package:ocupa2/features/job_posting/presentation/routes/job_posting_routes.dart';
+import 'package:ocupa2/features/payments/presentation/routes/payment_routes.dart';
 
 GoRouter createAppRouter(SessionViewModel sessionViewModel) {
   return GoRouter(
@@ -113,6 +115,8 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
       ...jobSearchRoutes(),
       ...myActivityRoutes(),
       ...aboutRoutes(),
+      ...JobPostingRoutes.routes,
+      ...PaymentRoutes.routes,
     ],
 
     errorBuilder: (BuildContext context, GoRouterState state) {

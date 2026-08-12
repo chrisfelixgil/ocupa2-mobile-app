@@ -16,7 +16,7 @@ abstract interface class UploadService {
 }
 
 class UploadServiceImpl implements UploadService {
-  const UploadServiceImpl({required ApiClient apiClient}) : _apiClient = apiClient;
+  const UploadServiceImpl({required this._apiClient});
 
   final ApiClient _apiClient;
 

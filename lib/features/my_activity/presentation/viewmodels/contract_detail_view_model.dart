@@ -10,10 +10,9 @@ import 'package:ocupa2/features/uploads/data/services/upload_service.dart';
 
 class ContractDetailViewModel extends ChangeNotifier {
   ContractDetailViewModel({
-    required ContractRepository contractRepository,
+    required this._contractRepository,
     required UploadService uploadService,
-  })  : _contractRepository = contractRepository,
-        _uploadService = uploadService;
+  })  : _uploadService = uploadService;
 
   final ContractRepository _contractRepository;
   final UploadService _uploadService;

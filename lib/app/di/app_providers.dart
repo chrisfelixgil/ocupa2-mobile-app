@@ -31,8 +31,17 @@ import 'package:ocupa2/features/my_activity/presentation/viewmodels/applications
 import 'package:ocupa2/features/my_activity/presentation/viewmodels/contracts_view_model.dart';
 import 'package:ocupa2/features/my_activity/presentation/viewmodels/experiences_view_model.dart';
 import 'package:ocupa2/features/uploads/data/services/upload_service.dart';
+import 'package:ocupa2/features/job_posting/data/repositories/job_posting_repository.dart';
+import 'package:ocupa2/features/job_posting/data/repositories/job_posting_repository_impl.dart';
+import 'package:ocupa2/features/job_posting/data/services/job_posting_service.dart';
+import 'package:ocupa2/features/job_posting/data/services/job_posting_service_impl.dart';
+import 'package:ocupa2/features/payments/data/repositories/payment_repository.dart';
+import 'package:ocupa2/features/payments/data/repositories/payment_repository_impl.dart';
+import 'package:ocupa2/features/payments/data/services/payment_service.dart';
+import 'package:ocupa2/features/payments/data/services/payment_service_impl.dart';
+import 'package:ocupa2/features/payments/presentation/viewmodels/make_payment_view_model.dart';
 import 'package:provider/provider.dart';
-
+import 'package:ocupa2/features/job_posting/data/services/upload_service.dart'; 
 class AppProviders extends StatelessWidget {
   const AppProviders({required this.child, super.key});
 
@@ -108,7 +117,9 @@ class AppProviders extends StatelessWidget {
         ),
         Provider<JobSearchService>(
           create: (BuildContext context) {
-            return JobSearchServiceImpl(apiClient: context.read<ApiClient>());
+            return JobSearchServiceImpl(
+              apiClient: context.read<ApiClient>(),
+            );
           },
         ),
         Provider<JobSearchRepository>(
@@ -187,6 +198,45 @@ class AppProviders extends StatelessWidget {
               contractRepository: context.read<ContractRepository>(),
             );
           },
+        Provider<JobPostingService>(
+          create: (BuildContext context) {
+            return JobPostingServiceImpl(
+              apiClient: context.read<ApiClient>(),
+            );
+          },
+        ),
+        Provider<JobPostingRepository>(
+          create: (BuildContext context) {
+            return JobPostingRepositoryImpl(
+              jobPostingService: context.read<JobPostingService>(),
+            );
+          },
+        ),
+        Provider<PaymentService>(
+          create: (BuildContext context) {
+            return PaymentServiceImpl(
+              apiClient: context.read<ApiClient>(),
+            );
+          },
+        ),
+        Provider<PaymentRepository>(
+          create: (BuildContext context) {
+            return PaymentRepositoryImpl(
+              paymentService: context.read<PaymentService>(),
+            );
+          },
+        ),
+        ChangeNotifierProvider<MakePaymentViewModel>(
+          create: (BuildContext context) {
+            return MakePaymentViewModel(
+              paymentRepository: context.read<PaymentRepository>(),
+            );
+          },
+        ),
+        Provider<UploadService>(
+          create: (context) => UploadService(
+            apiClient: context.read<ApiClient>(),
+          ),
         ),
         Provider<GoRouter>(
           create: (BuildContext context) {

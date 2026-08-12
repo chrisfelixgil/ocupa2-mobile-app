@@ -8,8 +8,8 @@ import 'package:ocupa2/features/job_search/presentation/viewmodels/offer_detail_
 class OfferDetailViewModel extends ChangeNotifier {
   OfferDetailViewModel({
     required this._jobSearchRepository,
-    required String offerId,
-  }) : _offerId = offerId;
+    required this._offerId,
+  });
 
   final JobSearchRepository _jobSearchRepository;
   final String _offerId;

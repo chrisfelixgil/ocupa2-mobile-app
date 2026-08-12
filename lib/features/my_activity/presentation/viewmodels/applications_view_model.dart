@@ -6,8 +6,8 @@ import 'package:ocupa2/features/my_activity/presentation/viewmodels/applications
 
 class ApplicationsViewModel extends ChangeNotifier {
   ApplicationsViewModel({
-    required ApplicationRepository applicationRepository,
-  }) : _applicationRepository = applicationRepository;
+    required this._applicationRepository,
+  });
 
   final ApplicationRepository _applicationRepository;
   ApplicationsStatus _status = ApplicationsStatus.idle;

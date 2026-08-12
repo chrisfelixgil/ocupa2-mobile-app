@@ -121,7 +121,7 @@ class _ExperiencesList extends StatelessWidget {
           96,
         ),
         itemCount: experiences.length,
-        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
         itemBuilder: (_, int index) {
           final Experience experience = experiences[index];
           return Card(

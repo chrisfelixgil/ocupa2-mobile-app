@@ -8,10 +8,9 @@ import 'package:ocupa2/features/uploads/data/services/upload_service.dart';
 
 class ExperiencesViewModel extends ChangeNotifier {
   ExperiencesViewModel({
-    required ExperienceRepository experienceRepository,
+    required this._experienceRepository,
     required UploadService uploadService,
-  })  : _experienceRepository = experienceRepository,
-        _uploadService = uploadService;
+  })  : _uploadService = uploadService;
 
   final ExperienceRepository _experienceRepository;
   final UploadService _uploadService;

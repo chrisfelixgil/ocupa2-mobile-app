@@ -22,6 +22,9 @@ dependencies:
   cached_network_image: ^3.4.1
   image_picker: ^1.1.2
   url_launcher: ^6.3.2
+  geolocator: ^14.0.3
+  geocoding: ^4.0.0
+
 
 dev_dependencies:
   flutter_test:
