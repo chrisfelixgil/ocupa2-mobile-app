@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +21,16 @@ import 'package:ocupa2/features/job_search/data/repositories/job_search_reposito
 import 'package:ocupa2/features/job_search/data/services/job_search_service.dart';
 import 'package:ocupa2/features/job_search/data/services/job_search_service_impl.dart';
 import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offers_view_model.dart';
+import 'package:ocupa2/features/my_activity/data/repositories/application_repository.dart';
+import 'package:ocupa2/features/my_activity/data/repositories/contract_repository.dart';
+import 'package:ocupa2/features/my_activity/data/repositories/experience_repository.dart';
+import 'package:ocupa2/features/my_activity/data/services/application_service.dart';
+import 'package:ocupa2/features/my_activity/data/services/contract_service.dart';
+import 'package:ocupa2/features/my_activity/data/services/experience_service.dart';
+import 'package:ocupa2/features/my_activity/presentation/viewmodels/applications_view_model.dart';
+import 'package:ocupa2/features/my_activity/presentation/viewmodels/contracts_view_model.dart';
+import 'package:ocupa2/features/my_activity/presentation/viewmodels/experiences_view_model.dart';
+import 'package:ocupa2/features/uploads/data/services/upload_service.dart';
 import 'package:provider/provider.dart';
 
 class AppProviders extends StatelessWidget {
@@ -112,6 +122,69 @@ class AppProviders extends StatelessWidget {
           create: (BuildContext context) {
             return ExploreOffersViewModel(
               jobSearchRepository: context.read<JobSearchRepository>(),
+            );
+          },
+        ),
+        Provider<ExperienceService>(
+          create: (BuildContext context) {
+            return ExperienceServiceImpl(apiClient: context.read<ApiClient>());
+          },
+        ),
+        Provider<UploadService>(
+          create: (BuildContext context) {
+            return UploadServiceImpl(apiClient: context.read<ApiClient>());
+          },
+        ),
+        Provider<ExperienceRepository>(
+          create: (BuildContext context) {
+            return ExperienceRepository(
+              experienceService: context.read<ExperienceService>(),
+            );
+          },
+        ),
+        ChangeNotifierProvider<ExperiencesViewModel>(
+          create: (BuildContext context) {
+            return ExperiencesViewModel(
+              experienceRepository: context.read<ExperienceRepository>(),
+              uploadService: context.read<UploadService>(),
+            );
+          },
+        ),
+        Provider<ApplicationService>(
+          create: (BuildContext context) {
+            return ApplicationServiceImpl(apiClient: context.read<ApiClient>());
+          },
+        ),
+        Provider<ApplicationRepository>(
+          create: (BuildContext context) {
+            return ApplicationRepository(
+              applicationService: context.read<ApplicationService>(),
+            );
+          },
+        ),
+        ChangeNotifierProvider<ApplicationsViewModel>(
+          create: (BuildContext context) {
+            return ApplicationsViewModel(
+              applicationRepository: context.read<ApplicationRepository>(),
+            );
+          },
+        ),
+        Provider<ContractService>(
+          create: (BuildContext context) {
+            return ContractServiceImpl(apiClient: context.read<ApiClient>());
+          },
+        ),
+        Provider<ContractRepository>(
+          create: (BuildContext context) {
+            return ContractRepository(
+              contractService: context.read<ContractService>(),
+            );
+          },
+        ),
+        ChangeNotifierProvider<ContractsViewModel>(
+          create: (BuildContext context) {
+            return ContractsViewModel(
+              contractRepository: context.read<ContractRepository>(),
             );
           },
         ),
