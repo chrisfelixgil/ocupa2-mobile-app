@@ -5,8 +5,7 @@ import 'package:ocupa2/features/catalog/data/services/catalog_service.dart';
 /// que se guarda en memoria después de la primera consulta para no pedirlo
 /// cada vez que se abre un filtro o un formulario.
 class CatalogRepository {
-  CatalogRepository({required CatalogService catalogService})
-      : _catalogService = catalogService;
+  CatalogRepository({required this._catalogService});
 
   final CatalogService _catalogService;
 

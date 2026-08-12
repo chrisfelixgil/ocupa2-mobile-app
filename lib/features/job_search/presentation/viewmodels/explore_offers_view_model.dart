@@ -8,8 +8,7 @@ import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offer
 /// reusar este mismo ViewModel más adelante ya que comparten los mismos
 /// datos y filtros.
 class ExploreOffersViewModel extends ChangeNotifier {
-  ExploreOffersViewModel({required JobSearchRepository jobSearchRepository})
-      : _jobSearchRepository = jobSearchRepository;
+  ExploreOffersViewModel({required this._jobSearchRepository});
 
   final JobSearchRepository _jobSearchRepository;
 

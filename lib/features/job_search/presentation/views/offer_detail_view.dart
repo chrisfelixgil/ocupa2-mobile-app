@@ -15,7 +15,8 @@ class OfferDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final OfferDetailViewModel viewModel = context.watch<OfferDetailViewModel>();
+    final OfferDetailViewModel viewModel = context
+        .watch<OfferDetailViewModel>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Detalle de la oferta')),
@@ -25,28 +26,32 @@ class OfferDetailView extends StatelessWidget {
 
   Widget _buildBody(BuildContext context, OfferDetailViewModel viewModel) {
     return switch (viewModel.status) {
-      OfferDetailStatus.idle ||
-      OfferDetailStatus.loading =>
-        const Center(child: CircularProgressIndicator()),
+      OfferDetailStatus.idle || OfferDetailStatus.loading => const Center(
+        child: CircularProgressIndicator(),
+      ),
       OfferDetailStatus.error => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(viewModel.errorMessage ?? 'Ocurrió un error.'),
-                const SizedBox(height: AppSpacing.md),
-                OutlinedButton(
-                  onPressed: viewModel.load,
-                  child: const Text('Reintentar'),
-                ),
-              ],
-            ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(viewModel.errorMessage ?? 'Ocurrió un error.'),
+              const SizedBox(height: AppSpacing.md),
+              OutlinedButton(
+                onPressed: viewModel.load,
+                child: const Text('Reintentar'),
+              ),
+            ],
           ),
         ),
-      OfferDetailStatus.loaded => viewModel.applicationSubmitted
-          ? const _ApplicationSubmittedView()
-          : _OfferDetailContent(offer: viewModel.offer!, viewModel: viewModel),
+      ),
+      OfferDetailStatus.loaded =>
+        viewModel.applicationSubmitted
+            ? const _ApplicationSubmittedView()
+            : _OfferDetailContent(
+                offer: viewModel.offer!,
+                viewModel: viewModel,
+              ),
     };
   }
 }
@@ -112,16 +117,17 @@ class _OfferDetailContentState extends State<_OfferDetailContent> {
     final List<ApplyAnswer> answers = widget.offer.questions
         .where((OfferQuestion question) => question.id != null)
         .map((OfferQuestion question) {
-      final Object? rawValue = values[question.id];
-      final String value = switch (rawValue) {
-        DateTime date => date.toIso8601String(),
-        bool flag => flag.toString(),
-        null => '',
-        _ => rawValue.toString(),
-      };
+          final Object? rawValue = values[question.id];
+          final String value = switch (rawValue) {
+            final DateTime date => date.toIso8601String(),
+            final bool flag => flag.toString(),
+            null => '',
+            _ => rawValue.toString(),
+          };
 
-      return ApplyAnswer(questionId: question.id!, value: value);
-    }).toList();
+          return ApplyAnswer(questionId: question.id!, value: value);
+        })
+        .toList();
 
     await widget.viewModel.apply(
       comment: values[_commentField] as String,
@@ -147,7 +153,7 @@ class _OfferDetailContentState extends State<_OfferDetailContent> {
                 height: 180,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
               ),
             ),
           const SizedBox(height: AppSpacing.md),
@@ -216,8 +222,9 @@ class _OfferDetailContentState extends State<_OfferDetailContent> {
                     ),
                   ),
                 FilledButton(
-                  onPressed:
-                      widget.viewModel.isSubmittingApplication ? null : _submit,
+                  onPressed: widget.viewModel.isSubmittingApplication
+                      ? null
+                      : _submit,
                   child: widget.viewModel.isSubmittingApplication
                       ? const SizedBox(
                           height: 18,
@@ -282,10 +289,7 @@ class _QuestionField extends StatelessWidget {
           validator: textValidator,
           decoration: InputDecoration(labelText: question.label),
           items: question.options.map((String option) {
-            return DropdownMenuItem<String>(
-              value: option,
-              child: Text(option),
-            );
+            return DropdownMenuItem<String>(value: option, child: Text(option));
           }).toList(),
         );
 

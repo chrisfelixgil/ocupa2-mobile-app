@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:ocupa2/core/session/session_event_bus.dart';
 import 'package:ocupa2/core/storage/token_storage.dart';
 
@@ -55,8 +55,7 @@ class AuthInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    final bool requiresAuth =
-        err.requestOptions.extra[requiresAuthKey] == true;
+    final bool requiresAuth = err.requestOptions.extra[requiresAuthKey] == true;
 
     final bool isUnauthorized = err.response?.statusCode == 401;
 

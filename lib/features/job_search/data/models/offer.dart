@@ -46,9 +46,8 @@ class Offer {
 
   /// Etiqueta lista para mostrar en pantalla (usa el nombre si vino del
   /// API, o el key crudo como respaldo).
-  String get displayJobType => jobTypeName?.trim().isNotEmpty == true
-      ? jobTypeName!.trim()
-      : jobTypeKey;
+  String get displayJobType =>
+      jobTypeName?.trim().isNotEmpty == true ? jobTypeName!.trim() : jobTypeKey;
 
   factory Offer.fromJson(Object? json) {
     final Map<String, dynamic> map = requireJsonObject(
@@ -57,16 +56,18 @@ class Offer {
     );
 
     final Object? location = map['location'];
-    final Map<String, dynamic>? locationMap =
-        location is Map ? location.map((Object? k, Object? v) {
-              return MapEntry<String, dynamic>(k.toString(), v);
-            }) : null;
+    final Map<String, dynamic>? locationMap = location is Map
+        ? location.map((Object? k, Object? v) {
+            return MapEntry<String, dynamic>(k.toString(), v);
+          })
+        : null;
 
     final Object? payment = map['payment'];
-    final Map<String, dynamic>? paymentMap =
-        payment is Map ? payment.map((Object? k, Object? v) {
-              return MapEntry<String, dynamic>(k.toString(), v);
-            }) : null;
+    final Map<String, dynamic>? paymentMap = payment is Map
+        ? payment.map((Object? k, Object? v) {
+            return MapEntry<String, dynamic>(k.toString(), v);
+          })
+        : null;
 
     final List<dynamic>? rawQuestions = map['questions'] as List<dynamic>?;
 
@@ -74,10 +75,8 @@ class Offer {
       id: requireString(map, 'id', context: 'Una oferta'),
       jobTypeKey: requireString(map, 'jobTypeKey', context: 'Una oferta'),
       jobTypeName: (map['jobTypeName'] as String?)?.trim(),
-      contractType:
-          requireString(map, 'contractType', context: 'Una oferta'),
-      description:
-          requireString(map, 'description', context: 'Una oferta'),
+      contractType: requireString(map, 'contractType', context: 'Una oferta'),
+      description: requireString(map, 'description', context: 'Una oferta'),
       address: requireString(map, 'address', context: 'Una oferta'),
       photoUrl: (map['photo'] as String?) ?? (map['photoUrl'] as String?),
       latitude: _asDouble(locationMap?['lat']),
@@ -87,7 +86,7 @@ class Offer {
       deadline: _asDate(map['deadline']),
       questions:
           rawQuestions?.map(OfferQuestion.fromJson).toList() ??
-              const <OfferQuestion>[],
+          const <OfferQuestion>[],
     );
   }
 

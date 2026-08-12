@@ -31,7 +31,8 @@ class JobType {
       label: (map['label'] as String?)?.trim().isNotEmpty == true
           ? (map['label'] as String).trim()
           : requireString(map, 'key', context: 'Un tipo de trabajo'),
-      customFields: (rawCustomFields as List<dynamic>?)
+      customFields:
+          (rawCustomFields as List<dynamic>?)
               ?.map(CustomField.fromJson)
               .toList() ??
           const <CustomField>[],

@@ -42,7 +42,7 @@ class OfferCard extends StatelessWidget {
                       : Image.network(
                           offer.photoUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) {
+                          errorBuilder: (_, _, _) {
                             return Container(
                               color: AppColors.border,
                               child: const Icon(

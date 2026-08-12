@@ -10,7 +10,12 @@ import 'package:ocupa2/features/auth/presentation/views/complete_profile_view.da
 import 'package:ocupa2/features/auth/presentation/views/forgot_password_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/login_view.dart';
 import 'package:ocupa2/features/auth/presentation/views/register_view.dart';
-import 'package:ocupa2/features/auth/presentation/views/session_ready_view.dart';
+import 'package:dio/dio.dart';
+import 'package:ocupa2/features/home/data/repositories/home_repository_impl.dart';
+import 'package:ocupa2/features/home/data/services/home_service_impl.dart';
+import 'package:ocupa2/features/home/presentation/viewmodels/home_view_model.dart';
+import 'package:ocupa2/features/home/presentation/views/home_view.dart';
+import 'package:provider/provider.dart';
 import 'package:ocupa2/features/auth/presentation/views/splash_view.dart';
 import 'package:ocupa2/features/job_search/presentation/routes/job_search_routes.dart';
 
@@ -32,16 +37,19 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
           return const SplashView();
         },
       ),
+
       GoRoute(
         path: RoutePaths.login,
         name: AppRouteNames.login,
         builder: (BuildContext context, GoRouterState state) {
           return LoginView(
             initialEmail: state.uri.queryParameters['email'],
-            fromPasswordRecovery: state.uri.queryParameters['recovered'] == '1',
+            fromPasswordRecovery:
+                state.uri.queryParameters['recovered'] == '1',
           );
         },
       ),
+
       GoRoute(
         path: RoutePaths.register,
         name: AppRouteNames.register,
@@ -49,6 +57,7 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
           return const RegisterView();
         },
       ),
+
       GoRoute(
         path: RoutePaths.forgotPassword,
         name: AppRouteNames.forgotPassword,
@@ -56,6 +65,7 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
           return const ForgotPasswordView();
         },
       ),
+
       GoRoute(
         path: RoutePaths.completeProfile,
         name: AppRouteNames.completeProfile,
@@ -63,13 +73,31 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
           return const CompleteProfileView();
         },
       ),
+
       GoRoute(
         path: RoutePaths.home,
         name: AppRouteNames.home,
         builder: (BuildContext context, GoRouterState state) {
-          return const SessionReadyView();
+          final Dio dio = Dio(
+            BaseOptions(
+              baseUrl: 'https://ocupa2.ia3x.com/apix',
+              connectTimeout: const Duration(seconds: 15),
+              receiveTimeout: const Duration(seconds: 15),
+            ),
+          );
+
+          final HomeServiceImpl service = HomeServiceImpl(dio);
+
+          final HomeRepositoryImpl repository =
+              HomeRepositoryImpl(service);
+
+          return ChangeNotifierProvider<HomeViewModel>(
+            create: (_) => HomeViewModel(repository),
+            child: const HomeView(),
+          );
         },
       ),
+
       GoRoute(
         path: RoutePaths.changePassword,
         name: AppRouteNames.changePassword,
@@ -79,14 +107,15 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
           );
         },
       ),
+
       ...jobSearchRoutes(),
     ],
+
     errorBuilder: (BuildContext context, GoRouterState state) {
       return const RouteErrorView();
     },
   );
 }
-
 String? _redirectForSession({
   required SessionViewModel sessionViewModel,
   required GoRouterState state,
@@ -100,8 +129,11 @@ String? _redirectForSession({
       location == RoutePaths.register ||
       location == RoutePaths.forgotPassword;
 
-  final bool isCompleteProfileRoute = location == RoutePaths.completeProfile;
-  final bool isChangePasswordRoute = location == RoutePaths.changePassword;
+  final bool isCompleteProfileRoute =
+      location == RoutePaths.completeProfile;
+
+  final bool isChangePasswordRoute =
+      location == RoutePaths.changePassword;
 
   switch (sessionViewModel.status) {
     case AuthStatus.checking:
@@ -115,17 +147,23 @@ String? _redirectForSession({
 
     case AuthStatus.authenticated:
       if (sessionViewModel.requiresPasswordChange) {
-        return isChangePasswordRoute ? null : RoutePaths.changePassword;
+        return isChangePasswordRoute
+            ? null
+            : RoutePaths.changePassword;
       }
 
       final bool profileCompleted =
           sessionViewModel.user?.profileCompleted == true;
 
       if (!profileCompleted) {
-        return isCompleteProfileRoute ? null : RoutePaths.completeProfile;
+        return isCompleteProfileRoute
+            ? null
+            : RoutePaths.completeProfile;
       }
 
-      if (isSplash || isPublicAuthRoute || isCompleteProfileRoute) {
+      if (isSplash ||
+          isPublicAuthRoute ||
+          isCompleteProfileRoute) {
         return RoutePaths.home;
       }
 

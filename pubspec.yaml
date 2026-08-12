@@ -1,4 +1,4 @@
-﻿name: ocupa2
+name: ocupa2
 description: Cliente Android de la plataforma de empleos temporales Ocupa2.
 publish_to: 'none'
 version: 1.0.0+1
@@ -19,6 +19,8 @@ dependencies:
   form_builder_validators: ^11.3.0
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
+  cached_network_image: ^3.4.1
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
