@@ -172,6 +172,12 @@ class SessionReadyView extends StatelessWidget {
                     },
                     icon: const Icon(Icons.description_rounded),
                     label: const Text('Mis contratos'),
+                    key: const Key('open_about_button'),
+                    onPressed: () {
+                      context.pushNamed(AppRouteNames.about);
+                    },
+                    icon: const Icon(Icons.info_outline_rounded),
+                    label: const Text('Acerca de'),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   OutlinedButton.icon(

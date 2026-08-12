@@ -6,6 +6,7 @@ abstract final class AppRouteNames {
   static const String completeProfile = 'complete-profile';
   static const String home = 'home';
   static const String changePassword = 'change-password';
+  static const String about = 'about';
 
   // my_activity
   static const String myExperiences = 'my-experiences';
