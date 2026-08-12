@@ -147,6 +147,26 @@ class SessionReadyView extends StatelessWidget {
                     label: const Text('Explorar ofertas'),
                   ),
                   const SizedBox(height: AppSpacing.md),
+                  // TODO(job_posting): mover a navegación por pestañas junto
+                  // con el resto cuando exista el módulo de Inicio.
+                  OutlinedButton.icon(
+                    key: const Key('open_my_offers_button'),
+                    onPressed: () {
+                      context.goNamed(AppRouteNames.jobPostingMyOffers);
+                    },
+                    icon: const Icon(Icons.work_outline_rounded),
+                    label: const Text('Mis ofertas'),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  OutlinedButton.icon(
+                    key: const Key('open_my_payments_button'),
+                    onPressed: () {
+                      context.pushNamed(AppRouteNames.paymentsMyPayments);
+                    },
+                    icon: const Icon(Icons.payments_rounded),
+                    label: const Text('Mis pagos'),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   OutlinedButton.icon(
                     key: const Key('open_about_button'),
                     onPressed: () {

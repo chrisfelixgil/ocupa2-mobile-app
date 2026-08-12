@@ -20,7 +20,7 @@ class CatalogServiceImpl implements CatalogService {
     final Object? rawResponse = await _apiClient.get(
       ApiEndpoints.jobTypes,
       // Endpoint público según el Swagger, no requiere sesión.
-      auth: RequestAuth.public,
+      auth: RequestAuth.protected,
     );
 
     try {

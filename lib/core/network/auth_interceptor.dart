@@ -1,4 +1,5 @@
 ﻿import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:ocupa2/core/session/session_event_bus.dart';
 import 'package:ocupa2/core/storage/token_storage.dart';
 
@@ -32,12 +33,24 @@ class AuthInterceptor extends Interceptor {
     try {
       final String? token = await _tokenStorage.readToken();
 
+      // DEBUG: confirma si el token existe en storage en el momento
+      // exacto de la request. Quitar una vez resuelto el problema.
+      debugPrint(
+        '[AuthInterceptor] ${options.method} ${options.path} -> '
+        'token=${token == null ? "NULL" : token.isEmpty ? "VACÍO" : "OK (${token.length} chars)"}',
+      );
+
       if (token != null && token.isNotEmpty) {
         options.headers[_authorizationHeader] = 'Bearer $token';
+      } else {
+        debugPrint(
+          '[AuthInterceptor] Enviando "${options.path}" SIN header Authorization.',
+        );
       }
 
       handler.next(options);
     } catch (error, stackTrace) {
+      debugPrint('[AuthInterceptor] Error leyendo el token: $error');
       handler.reject(
         DioException(
           requestOptions: options,
@@ -60,6 +73,12 @@ class AuthInterceptor extends Interceptor {
 
     final bool isUnauthorized = err.response?.statusCode == 401;
 
+    // DEBUG
+    debugPrint(
+      '[AuthInterceptor] onError: status=${err.response?.statusCode} '
+      'requiresAuth=$requiresAuth path=${err.requestOptions.path}',
+    );
+
     if (requiresAuth && isUnauthorized) {
       await _handleUnauthorized();
     }
@@ -75,6 +94,7 @@ class AuthInterceptor extends Interceptor {
     _isHandlingUnauthorized = true;
 
     try {
+      debugPrint('[AuthInterceptor] Sesión expirada — borrando token y notificando.');
       try {
         await _tokenStorage.deleteToken();
       } catch (_) {
