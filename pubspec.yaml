@@ -19,10 +19,7 @@ dependencies:
   form_builder_validators: ^11.3.0
   flutter_map: ^8.2.2
   latlong2: ^0.9.1
-<<<<<<< HEAD
   cached_network_image: ^3.4.1
-=======
->>>>>>> origin/feature/about
   url_launcher: ^6.3.2
 
 dev_dependencies:
