@@ -8,6 +8,12 @@ abstract final class AppRouteNames {
   static const String changePassword = 'change-password';
   static const String about = 'about';
 
+  // my_activity
+  static const String myExperiences = 'my-experiences';
+  static const String myApplications = 'my-applications';
+  static const String myContracts = 'my-contracts';
+  static const String contractDetail = 'contract-detail';
+
   // job_search
   static const String jobSearchExplore = 'job-search-explore';
   static const String jobSearchMap = 'job-search-map';
