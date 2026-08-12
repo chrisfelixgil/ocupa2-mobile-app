@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ocupa2/app/router/app_routes.dart';
 import 'package:provider/provider.dart';
-
 import '../viewmodels/home_status.dart';
 import '../viewmodels/home_view_model.dart';
 import '../widgets/news_section.dart';
@@ -8,9 +9,7 @@ import '../widgets/videos_section.dart';
 import '../widgets/welcome_slider.dart';
 
 class HomeView extends StatefulWidget {
-  const HomeView({
-    super.key,
-  });
+  const HomeView({super.key});
 
   @override
   State<HomeView> createState() {
@@ -32,10 +31,123 @@ class _HomeViewState extends State<HomeView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Ocupa2',
-        ),
+        title: const Text('Ocupa2'),
         centerTitle: true,
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Menú',
+            icon: const Icon(Icons.menu_rounded),
+            onSelected: (String value) {
+              switch (value) {
+                case 'offers':
+                  context.pushNamed(
+                    AppRouteNames.jobSearchExplore,
+                  );
+                  break;
+
+                case 'experiences':
+                  context.pushNamed(
+                    AppRouteNames.myExperiences,
+                  );
+                  break;
+
+                case 'applications':
+                  context.pushNamed(
+                    AppRouteNames.myApplications,
+                  );
+                  break;
+
+                case 'contracts':
+                  context.pushNamed(
+                    AppRouteNames.myContracts,
+                  );
+                  break;
+
+                case 'changePassword':
+                  context.pushNamed(
+                    AppRouteNames.changePassword,
+                  );
+                  break;
+
+                case 'about':
+                  context.pushNamed(
+                    AppRouteNames.about,
+                  );
+                  break;
+              }
+            },
+            itemBuilder: (BuildContext context) => const [
+              PopupMenuItem<String>(
+                value: 'offers',
+                child: ListTile(
+                  leading: Icon(
+                    Icons.travel_explore_rounded,
+                  ),
+                  title: Text(
+                    'Explorar ofertas',
+                  ),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'experiences',
+                child: ListTile(
+                  leading: Icon(
+                    Icons.work_history_outlined,
+                  ),
+                  title: Text(
+                    'Mis experiencias',
+                  ),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'applications',
+                child: ListTile(
+                  leading: Icon(
+                    Icons.assignment_outlined,
+                  ),
+                  title: Text(
+                    'Mis aplicaciones',
+                  ),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'contracts',
+                child: ListTile(
+                  leading: Icon(
+                    Icons.description_rounded,
+                  ),
+                  title: Text(
+                    'Mis contratos',
+                  ),
+                ),
+              ),
+              PopupMenuDivider(),
+              PopupMenuItem<String>(
+                value: 'changePassword',
+                child: ListTile(
+                  leading: Icon(
+                    Icons.password_rounded,
+                  ),
+                  title: Text(
+                    'Cambiar contraseña',
+                  ),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'about',
+                child: ListTile(
+                  leading: Icon(
+                    Icons.info_outline_rounded,
+                  ),
+                  title: Text(
+                    'Acerca de',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Consumer<HomeViewModel>(
         builder: (
@@ -123,7 +235,9 @@ class _SectionTitle extends StatelessWidget {
         children: [
           Icon(
             icon,
-            color: Theme.of(context).colorScheme.primary,
+            color: Theme.of(
+              context,
+            ).colorScheme.primary,
           ),
 
           const SizedBox(width: 8),
@@ -131,10 +245,9 @@ class _SectionTitle extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
             ),

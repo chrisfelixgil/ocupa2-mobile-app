@@ -169,7 +169,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.1.2"
-<<<<<<< HEAD
   file:
     dependency: transitive
     description:
@@ -178,7 +177,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.1"
-=======
   file_selector_linux:
     dependency: transitive
     description:
@@ -211,7 +209,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.9.3+5"
->>>>>>> origin/feature/my-activity
   fixnum:
     dependency: transitive
     description:
