@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ocupa2/app/router/app_routes.dart';
 import 'package:provider/provider.dart';
+
 import '../viewmodels/home_status.dart';
 import '../viewmodels/home_view_model.dart';
 import '../widgets/news_section.dart';
@@ -37,11 +38,18 @@ class _HomeViewState extends State<HomeView> {
           PopupMenuButton<String>(
             tooltip: 'Menú',
             icon: const Icon(Icons.menu_rounded),
+
             onSelected: (String value) {
               switch (value) {
                 case 'offers':
                   context.pushNamed(
                     AppRouteNames.jobSearchExplore,
+                  );
+                  break;
+
+                case 'myOffers':
+                  context.pushNamed(
+                    AppRouteNames.jobPostingMyOffers,
                   );
                   break;
 
@@ -63,6 +71,12 @@ class _HomeViewState extends State<HomeView> {
                   );
                   break;
 
+                case 'myPayments':
+                  context.pushNamed(
+                    AppRouteNames.paymentsMyPayments,
+                  );
+                  break;
+
                 case 'changePassword':
                   context.pushNamed(
                     AppRouteNames.changePassword,
@@ -76,6 +90,7 @@ class _HomeViewState extends State<HomeView> {
                   break;
               }
             },
+
             itemBuilder: (BuildContext context) => const [
               PopupMenuItem<String>(
                 value: 'offers',
@@ -88,6 +103,19 @@ class _HomeViewState extends State<HomeView> {
                   ),
                 ),
               ),
+
+              PopupMenuItem<String>(
+                value: 'myOffers',
+                child: ListTile(
+                  leading: Icon(
+                    Icons.campaign_outlined,
+                  ),
+                  title: Text(
+                    'Mis ofertas',
+                  ),
+                ),
+              ),
+
               PopupMenuItem<String>(
                 value: 'experiences',
                 child: ListTile(
@@ -99,6 +127,7 @@ class _HomeViewState extends State<HomeView> {
                   ),
                 ),
               ),
+
               PopupMenuItem<String>(
                 value: 'applications',
                 child: ListTile(
@@ -110,6 +139,7 @@ class _HomeViewState extends State<HomeView> {
                   ),
                 ),
               ),
+
               PopupMenuItem<String>(
                 value: 'contracts',
                 child: ListTile(
@@ -121,7 +151,21 @@ class _HomeViewState extends State<HomeView> {
                   ),
                 ),
               ),
+
+              PopupMenuItem<String>(
+                value: 'myPayments',
+                child: ListTile(
+                  leading: Icon(
+                    Icons.payments_outlined,
+                  ),
+                  title: Text(
+                    'Mis pagos',
+                  ),
+                ),
+              ),
+
               PopupMenuDivider(),
+
               PopupMenuItem<String>(
                 value: 'changePassword',
                 child: ListTile(
@@ -133,6 +177,7 @@ class _HomeViewState extends State<HomeView> {
                   ),
                 ),
               ),
+
               PopupMenuItem<String>(
                 value: 'about',
                 child: ListTile(
@@ -146,9 +191,11 @@ class _HomeViewState extends State<HomeView> {
               ),
             ],
           ),
+
           const SizedBox(width: 8),
         ],
       ),
+
       body: Consumer<HomeViewModel>(
         builder: (
           context,
@@ -157,12 +204,15 @@ class _HomeViewState extends State<HomeView> {
         ) {
           return RefreshIndicator(
             onRefresh: viewModel.refresh,
+
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
+
               padding: const EdgeInsets.only(
                 top: 16,
                 bottom: 40,
               ),
+
               children: [
                 const WelcomeSlider(),
 
@@ -231,6 +281,7 @@ class _SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.symmetric(
         horizontal: 16,
       ),
+
       child: Row(
         children: [
           Icon(
@@ -245,6 +296,7 @@ class _SectionTitle extends StatelessWidget {
           Expanded(
             child: Text(
               title,
+
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(
@@ -271,6 +323,7 @@ class _ErrorMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24),
+
       child: Column(
         children: [
           const Icon(
@@ -291,9 +344,11 @@ class _ErrorMessage extends StatelessWidget {
             onPressed: () {
               onRetry();
             },
+
             icon: const Icon(
               Icons.refresh,
             ),
+
             label: const Text(
               'Intentar nuevamente',
             ),
