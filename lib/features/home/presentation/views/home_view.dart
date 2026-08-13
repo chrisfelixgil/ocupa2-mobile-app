@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ocupa2/app/router/app_routes.dart';
+import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.dart';
 import 'package:provider/provider.dart';
 
 import '../viewmodels/home_status.dart';
@@ -19,6 +20,47 @@ class HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<HomeView> {
+  Future<void> _requestLogout(BuildContext context) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Cerrar sesión'),
+          content: const Text(
+            '¿Estás seguro de que deseas cerrar tu sesión en este dispositivo?',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Cerrar sesión'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    final SessionViewModel session = context.read<SessionViewModel>();
+    final bool success = await session.logout();
+
+    if (!success && context.mounted) {
+      final String message =
+          session.sessionActionErrorMessage ??
+          'No fue posible cerrar la sesión.';
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -88,10 +130,14 @@ class _HomeViewState extends State<HomeView> {
                     AppRouteNames.about,
                   );
                   break;
+
+                case 'logout':
+                  _requestLogout(context);
+                  break;
               }
             },
 
-            itemBuilder: (BuildContext context) => const [
+            itemBuilder: (BuildContext context) => [
               PopupMenuItem<String>(
                 value: 'offers',
                 child: ListTile(
@@ -186,6 +232,17 @@ class _HomeViewState extends State<HomeView> {
                   ),
                   title: Text(
                     'Acerca de',
+                  ),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'logout',
+                child: ListTile(
+                  leading: Icon(
+                    Icons.logout_rounded,
+                  ),
+                  title: Text(
+                    'Cerrar sesión',
                   ),
                 ),
               ),
