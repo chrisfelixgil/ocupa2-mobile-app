@@ -1,6 +1,8 @@
 import 'package:ocupa2/core/network/json_parsing.dart';
 import 'package:ocupa2/features/job_search/data/models/offer.dart';
 
+import 'experience.dart';
+
 /// Modelo que representa una postulación del usuario a una oferta (GET /me/applications).
 class Application {
   const Application({
@@ -17,6 +19,9 @@ class Application {
     this.offerPhotoUrl,
     this.offerAddress,
     this.offer,
+    this.applicantFirstName,
+    this.applicantLastName,
+    this.applicantExperiences = const <Experience>[],
   });
 
   final String id;
@@ -32,6 +37,9 @@ class Application {
   final String? offerPhotoUrl;
   final String? offerAddress;
   final Offer? offer;
+  final String? applicantFirstName;
+  final String? applicantLastName;
+  final List<Experience> applicantExperiences;
 
   /// Título o tipo de empleo a mostrar en la UI.
   String get displayTitle {
@@ -77,6 +85,25 @@ class Application {
     };
   }
 
+  String get applicantDisplayName {
+    final String firstName = applicantFirstName?.trim() ?? '';
+    final String lastName = applicantLastName?.trim() ?? '';
+
+    if (firstName.isEmpty && lastName.isEmpty) {
+      return 'Postulante';
+    }
+
+    if (firstName.isEmpty) {
+      return lastName;
+    }
+
+    if (lastName.isEmpty) {
+      return firstName;
+    }
+
+    return '$firstName $lastName';
+  }
+
   factory Application.fromJson(Object? json) {
     final Map<String, dynamic> map = requireJsonObject(
       json,
@@ -100,6 +127,27 @@ class Application {
         ? DateTime.tryParse(rawCreatedAt.trim())
         : null;
 
+    final Object? rawUser = map['user'] ?? map['applicant'] ?? map['candidate'];
+    final Map<String, dynamic>? userMap = rawUser is Map<String, dynamic>
+        ? rawUser
+        : rawUser is Map
+            ? Map<String, dynamic>.from(rawUser)
+            : null;
+
+    final Object? rawExperiences = map['experiences'] ??
+        (userMap != null ? userMap['experiences'] : null);
+    final List<Experience> parsedExperiences = rawExperiences is List
+        ? rawExperiences.map((Object? entry) {
+            if (entry is Map<String, dynamic>) {
+              return Experience.fromJson(entry);
+            }
+            if (entry is Map) {
+              return Experience.fromJson(Map<String, dynamic>.from(entry));
+            }
+            throw const FormatException('Experiencia inválida');
+          }).toList()
+        : const <Experience>[];
+
     return Application(
       id: requireString(map, 'id', context: 'Una aplicación'),
       status: requireString(map, 'status', context: 'Una aplicación'),
@@ -114,6 +162,9 @@ class Application {
       offerPhotoUrl: (map['photo'] as String?) ?? (map['photoUrl'] as String?) ?? (map['offerPhoto'] as String?) ?? offerObj?.photoUrl,
       offerAddress: (map['address'] as String?) ?? (map['offerAddress'] as String?) ?? offerObj?.address,
       offer: offerObj,
+      applicantFirstName: (userMap?['firstName'] as String?)?.trim(),
+      applicantLastName: (userMap?['lastName'] as String?)?.trim(),
+      applicantExperiences: parsedExperiences,
     );
   }
 }

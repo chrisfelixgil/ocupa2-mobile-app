@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:ocupa2/features/my_activity/data/models/application.dart';
+import 'package:ocupa2/features/my_activity/data/models/experience.dart';
+
 import '../../data/models/offer.dart';
 import '../../data/models/offer_status.dart';
 import '../viewmodels/offer_detail_status.dart';
@@ -305,9 +308,48 @@ class _OfferContent extends StatelessWidget {
           const SizedBox(height: 28),
 
           // ============================================================
-          // ESTADO
+          // POSTULANTES
           // ============================================================
+          Text(
+            'Postulantes',
+            style: textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (viewModel.applicants.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Todavía no hay postulantes para esta oferta.',
+              ),
+            )
+          else
+            ...viewModel.applicants.map((Application applicant) {
+              return _ApplicantCard(
+                applicant: applicant,
+                isUpdating: viewModel.isUpdatingApplicant,
+                onSelectFinalist: () => viewModel.updateApplicantStatus(
+                  applicationId: applicant.id,
+                  status: 'finalist',
+                ),
+                onSelectWinner: () => viewModel.updateApplicantStatus(
+                  applicationId: applicant.id,
+                  status: 'winner',
+                ),
+                onDiscard: () => viewModel.updateApplicantStatus(
+                  applicationId: applicant.id,
+                  status: 'discarded',
+                ),
+              );
+            }),
 
+          const SizedBox(height: 28),
 
           // ============================================================
           // DESACTIVAR
@@ -348,19 +390,6 @@ class _OfferContent extends StatelessWidget {
     );
   }
 
-  String _statusText(OfferStatus status) {
-    switch (status) {
-      case OfferStatus.active:
-        return 'Activa';
-
-      case OfferStatus.inactive:
-        return 'Inactiva';
-
-      case OfferStatus.unknown:
-        return 'Estado desconocido';
-    }
-  }
-
   Future<void> _deactivate(BuildContext context) async {
     final bool ok = await viewModel.deactivate();
 
@@ -369,10 +398,189 @@ class _OfferContent extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          ok
-              ? 'Oferta desactivada'
-              : 'No se pudo desactivar la oferta',
+          ok ? 'Oferta desactivada' : 'No se pudo desactivar la oferta',
         ),
+      ),
+    );
+  }
+}
+
+class _ApplicantCard extends StatelessWidget {
+  const _ApplicantCard({
+    required this.applicant,
+    required this.isUpdating,
+    required this.onSelectFinalist,
+    required this.onSelectWinner,
+    required this.onDiscard,
+  });
+
+  final Application applicant;
+  final bool isUpdating;
+  final VoidCallback onSelectFinalist;
+  final VoidCallback onSelectWinner;
+  final VoidCallback onDiscard;
+
+  Future<void> _openCertificateDialog(
+    BuildContext context,
+    Experience experience,
+  ) async {
+    final String? imageUrl = experience.certificateImage?.trim();
+
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return Dialog.fullscreen(
+          child: Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                icon: const Icon(Icons.close),
+              ),
+              title: Text(experience.title),
+            ),
+            body: SafeArea(
+              child: InteractiveViewer(
+                child: Center(
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) {
+                      return const Center(
+                        child: Text('No se pudo cargar el certificado'),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color statusColor = switch (applicant.status.toLowerCase()) {
+      'applied' => Colors.orange,
+      'finalist' => Colors.blue,
+      'winner' => Colors.green,
+      'discarded' => Colors.red,
+      _ => Colors.grey,
+    };
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  applicant.applicantDisplayName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  applicant.displayStatusLabel,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            applicant.offerTitle ?? 'Postulación a oferta',
+            style: TextStyle(
+              color: Colors.grey.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if ((applicant.comment ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              applicant.comment!,
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
+          ],
+          if (applicant.applicantExperiences.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Experiencia registrada',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: applicant.applicantExperiences
+                  .where((experience) => experience.title.trim().isNotEmpty)
+                  .map((experience) {
+                    return ActionChip(
+                      avatar: const Icon(
+                        Icons.badge_outlined,
+                        size: 18,
+                      ),
+                      label: Text(experience.title),
+                      onPressed: (experience.certificateImage?.trim().isNotEmpty ?? false)
+                          ? () => _openCertificateDialog(context, experience)
+                          : null,
+                    );
+                  })
+                  .toList(),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton(
+                onPressed: isUpdating ? null : onSelectFinalist,
+                child: const Text('Finalista'),
+              ),
+              OutlinedButton(
+                onPressed: isUpdating ? null : onSelectWinner,
+                child: const Text('Ganador'),
+              ),
+              TextButton(
+                onPressed: isUpdating ? null : onDiscard,
+                child: const Text('Descartar'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

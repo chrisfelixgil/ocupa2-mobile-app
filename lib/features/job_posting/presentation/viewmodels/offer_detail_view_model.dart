@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:ocupa2/features/my_activity/data/models/application.dart';
+import 'package:ocupa2/features/my_activity/data/repositories/application_repository.dart';
 
 import '../../data/models/offer.dart';
 import '../../data/repositories/job_posting_repository.dart';
@@ -7,9 +9,11 @@ import 'offer_detail_status.dart';
 class JobPostingOfferDetailViewModel extends ChangeNotifier {
   JobPostingOfferDetailViewModel({
     required this._jobPostingRepository,
+    required this._applicationRepository,
   });
 
   final JobPostingRepository _jobPostingRepository;
+  final ApplicationRepository _applicationRepository;
 
   JobPostingOfferDetailStatus _status = JobPostingOfferDetailStatus.idle;
 
@@ -23,23 +27,65 @@ class JobPostingOfferDetailViewModel extends ChangeNotifier {
 
   Offer? get offer => _offer;
 
+  List<Application> _applicants = const <Application>[];
+
+  List<Application> get applicants => _applicants;
+
+  bool _isUpdatingApplicant = false;
+
+  bool get isUpdatingApplicant => _isUpdatingApplicant;
+
   Future<void> load(String offerId) async {
     _status = JobPostingOfferDetailStatus.loading;
     _errorMessage = null;
+    _applicants = const <Application>[];
 
     notifyListeners();
 
     try {
-      _offer = await _jobPostingRepository.getOfferById(offerId);
+      final Offer loadedOffer = await _jobPostingRepository.getOfferById(offerId);
+      final List<Application> loadedApplicants =
+          await _applicationRepository.getOfferApplications(offerId: offerId);
 
+      _offer = loadedOffer;
+      _applicants = loadedApplicants;
       _status = JobPostingOfferDetailStatus.loaded;
     } catch (e) {
       _errorMessage = e.toString();
-
       _status = JobPostingOfferDetailStatus.error;
     }
 
     notifyListeners();
+  }
+
+  Future<bool> updateApplicantStatus({
+    required String applicationId,
+    required String status,
+  }) async {
+    _isUpdatingApplicant = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final Application updated =
+          await _applicationRepository.updateApplication(
+        id: applicationId,
+        status: status,
+      );
+
+      _applicants = _applicants.map((Application item) {
+        return item.id == updated.id ? updated : item;
+      }).toList();
+
+      _isUpdatingApplicant = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isUpdatingApplicant = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> deactivate() async {

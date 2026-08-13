@@ -10,6 +10,12 @@ class ApplicationRepository {
     return _applicationService.getMyApplications();
   }
 
+  Future<List<Application>> getOfferApplications({
+    required String offerId,
+  }) {
+    return _applicationService.getOfferApplications(offerId: offerId);
+  }
+
   Future<Application> updateApplication({
     required String id,
     int? rating,

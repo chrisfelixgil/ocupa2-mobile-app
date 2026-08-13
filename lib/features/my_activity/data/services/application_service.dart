@@ -8,6 +8,10 @@ import 'package:ocupa2/features/my_activity/data/models/application.dart';
 abstract interface class ApplicationService {
   Future<List<Application>> getMyApplications();
 
+  Future<List<Application>> getOfferApplications({
+    required String offerId,
+  });
+
   Future<Application> updateApplication({
     required String id,
     int? rating,
@@ -38,6 +42,21 @@ class ApplicationServiceImpl implements ApplicationService {
   }
 
   @override
+  Future<List<Application>> getOfferApplications({
+    required String offerId,
+  }) async {
+    final Object? response = await _apiClient.get(
+      ApiEndpoints.offerApplications(offerId),
+      auth: RequestAuth.protected,
+    );
+
+    return _parse(response, (Object? data) {
+      final List<dynamic> items = data as List<dynamic>? ?? <dynamic>[];
+      return items.map(Application.fromJson).toList();
+    });
+  }
+
+  @override
   Future<Application> updateApplication({
     required String id,
     int? rating,
@@ -47,17 +66,19 @@ class ApplicationServiceImpl implements ApplicationService {
     String? startDate,
     String? duration,
   }) async {
+    final Map<String, dynamic> body = <String, dynamic>{
+      if (rating != null) 'rating': rating,
+      if (status != null) 'status': status,
+      if (salary != null) 'salary': salary,
+      if (currency != null) 'currency': currency,
+      if (startDate != null) 'startDate': startDate,
+      if (duration != null) 'duration': duration,
+    };
+
     final Object? response = await _apiClient.patch(
       ApiEndpoints.applicationById(id),
       auth: RequestAuth.protected,
-      data: <String, dynamic>{
-        'rating': ?rating,
-        'status': ?status,
-        'salary': ?salary,
-        'currency': ?currency,
-        'startDate': ?startDate,
-        'duration': ?duration,
-      },
+      data: body,
     );
 
     return _parse(response, Application.fromJson);

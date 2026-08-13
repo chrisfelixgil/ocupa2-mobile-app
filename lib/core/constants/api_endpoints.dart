@@ -15,6 +15,7 @@ abstract final class ApiEndpoints {
 
   static const String myApplications = '/me/applications';
   static String applicationById(String id) => '/applications/$id';
+  static String offerApplications(String offerId) => '/offers/$offerId/applications';
 
   static const String myContracts = '/me/contracts';
   static String contractDetail(String id) => '/contracts/$id';
