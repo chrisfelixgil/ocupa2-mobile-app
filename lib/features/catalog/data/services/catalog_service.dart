@@ -10,8 +10,7 @@ abstract interface class CatalogService {
 }
 
 class CatalogServiceImpl implements CatalogService {
-  const CatalogServiceImpl({required ApiClient apiClient})
-      : _apiClient = apiClient;
+  const CatalogServiceImpl({required this._apiClient});
 
   final ApiClient _apiClient;
 
@@ -20,18 +19,18 @@ class CatalogServiceImpl implements CatalogService {
     final Object? rawResponse = await _apiClient.get(
       ApiEndpoints.jobTypes,
       // Endpoint público según el Swagger, no requiere sesión.
-      auth: RequestAuth.public,
+      auth: RequestAuth.protected,
     );
 
     try {
       final ApiResponse<List<JobType>> response =
           ApiResponse<List<JobType>>.fromJson(
-        rawResponse,
-        parseData: (Object? data) {
-          final List<dynamic> list = data as List<dynamic>? ?? <dynamic>[];
-          return list.map(JobType.fromJson).toList();
-        },
-      );
+            rawResponse,
+            parseData: (Object? data) {
+              final List<dynamic> list = data as List<dynamic>? ?? <dynamic>[];
+              return list.map(JobType.fromJson).toList();
+            },
+          );
 
       return response.data;
     } on FormatException catch (error) {

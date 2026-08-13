@@ -2,16 +2,17 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Permisos de ubicación -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
     <application
         android:name="${applicationName}"
         android:label="Ocupa2"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false">
 
-        <!-- Impeller (el renderizador nuevo de Flutter) tiene problemas
-             conocidos con imágenes en algunos emuladores Android (GPU
-             virtual). Se desactiva para usar Skia, el renderizador
-             anterior, más estable en estos casos. -->
+        <!-- Impeller -->
         <meta-data
             android:name="io.flutter.embedding.android.EnableImpeller"
             android:value="false" />
@@ -34,29 +35,37 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
 
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
     </application>
 
     <queries>
+
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
         </intent>
+
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="tel" />
         </intent>
+
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="http" />
         </intent>
+
     </queries>
+
 </manifest>

@@ -76,7 +76,8 @@ class _OfferMapViewState extends State<OfferMapView> {
 
   @override
   Widget build(BuildContext context) {
-    final ExploreOffersViewModel viewModel = context.watch<ExploreOffersViewModel>();
+    final ExploreOffersViewModel viewModel = context
+        .watch<ExploreOffersViewModel>();
 
     final List<Offer> located = viewModel.status == ExploreOffersStatus.success
         ? _offersWithLocation(viewModel.offers)
@@ -104,7 +105,8 @@ class _OfferMapViewState extends State<OfferMapView> {
               right: 0,
               child: Center(child: CircularProgressIndicator()),
             ),
-          if (viewModel.status == ExploreOffersStatus.success && located.isEmpty)
+          if (viewModel.status == ExploreOffersStatus.success &&
+              located.isEmpty)
             const Positioned(
               top: AppSpacing.md,
               left: AppSpacing.md,
@@ -175,7 +177,7 @@ class _OffersMap extends StatelessWidget {
         options: MapOptions(
           initialCenter: center,
           initialZoom: initialZoom,
-          onTap: (_, __) => onMapTap(),
+          onTap: (_, _) => onMapTap(),
         ),
         children: <Widget>[
           TileLayer(
@@ -195,9 +197,10 @@ class _OffersMap extends StatelessWidget {
             // Sin animación de opacidad al cargar: en algunos entornos esa
             // animación no llega a completarse visualmente.
             tileDisplay: const TileDisplay.instantaneous(),
-            errorTileCallback: (TileImage tile, Object error, StackTrace? stackTrace) {
-              debugPrint('No se pudo cargar un tile del mapa: $error');
-            },
+            errorTileCallback:
+                (TileImage tile, Object error, StackTrace? stackTrace) {
+                  debugPrint('No se pudo cargar un tile del mapa: $error');
+                },
           ),
           RichAttributionWidget(
             attributions: <SourceAttribution>[

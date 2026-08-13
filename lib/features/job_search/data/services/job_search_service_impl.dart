@@ -8,8 +8,7 @@ import 'package:ocupa2/features/job_search/data/models/offer.dart';
 import 'package:ocupa2/features/job_search/data/services/job_search_service.dart';
 
 class JobSearchServiceImpl implements JobSearchService {
-  const JobSearchServiceImpl({required ApiClient apiClient})
-      : _apiClient = apiClient;
+  const JobSearchServiceImpl({required this._apiClient});
 
   final ApiClient _apiClient;
 

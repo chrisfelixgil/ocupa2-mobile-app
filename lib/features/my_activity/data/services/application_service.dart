@@ -20,8 +20,7 @@ abstract interface class ApplicationService {
 }
 
 class ApplicationServiceImpl implements ApplicationService {
-  const ApplicationServiceImpl({required ApiClient apiClient})
-      : _apiClient = apiClient;
+  const ApplicationServiceImpl({required this._apiClient});
 
   final ApiClient _apiClient;
 
@@ -52,12 +51,12 @@ class ApplicationServiceImpl implements ApplicationService {
       ApiEndpoints.applicationById(id),
       auth: RequestAuth.protected,
       data: <String, dynamic>{
-        if (rating != null) 'rating': rating,
-        if (status != null) 'status': status,
-        if (salary != null) 'salary': salary,
-        if (currency != null) 'currency': currency,
-        if (startDate != null) 'startDate': startDate,
-        if (duration != null) 'duration': duration,
+        'rating': ?rating,
+        'status': ?status,
+        'salary': ?salary,
+        'currency': ?currency,
+        'startDate': ?startDate,
+        'duration': ?duration,
       },
     );
 

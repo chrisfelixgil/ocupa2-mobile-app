@@ -29,7 +29,8 @@ class OfferQuestion {
       label: requireString(map, 'label', context: 'Una pregunta de la oferta'),
       type: requireString(map, 'type', context: 'Una pregunta de la oferta'),
       required: map['required'] == true,
-      options: (map['options'] as List<dynamic>?)
+      options:
+          (map['options'] as List<dynamic>?)
               ?.map((Object? option) => option.toString())
               .toList() ??
           const <String>[],

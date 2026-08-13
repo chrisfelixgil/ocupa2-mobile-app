@@ -4,8 +4,7 @@ import 'package:ocupa2/features/my_activity/data/models/contract_photo.dart';
 import 'package:ocupa2/features/my_activity/data/services/contract_service.dart';
 
 class ContractRepository {
-  const ContractRepository({required ContractService contractService})
-      : _contractService = contractService;
+  const ContractRepository({required this._contractService});
 
   final ContractService _contractService;
 

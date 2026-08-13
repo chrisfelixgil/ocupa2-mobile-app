@@ -42,8 +42,7 @@ abstract interface class ContractService {
 }
 
 class ContractServiceImpl implements ContractService {
-  const ContractServiceImpl({required ApiClient apiClient})
-      : _apiClient = apiClient;
+  const ContractServiceImpl({required this._apiClient});
 
   final ApiClient _apiClient;
 

@@ -28,7 +28,8 @@ class CustomField {
       label: requireString(map, 'label', context: 'Un campo personalizado'),
       type: requireString(map, 'type', context: 'Un campo personalizado'),
       required: map['required'] == true,
-      options: (map['options'] as List<dynamic>?)
+      options:
+          (map['options'] as List<dynamic>?)
               ?.map((Object? option) => option.toString())
               .toList() ??
           const <String>[],

@@ -11,7 +11,10 @@ class ApplyAnswer {
 
 /// Cuerpo de POST /offers/{id}/apply.
 class ApplyRequest {
-  const ApplyRequest({required this.comment, this.answers = const <ApplyAnswer>[]});
+  const ApplyRequest({
+    required this.comment,
+    this.answers = const <ApplyAnswer>[],
+  });
 
   final String comment;
   final List<ApplyAnswer> answers;

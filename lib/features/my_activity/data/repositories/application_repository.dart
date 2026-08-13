@@ -2,8 +2,7 @@ import 'package:ocupa2/features/my_activity/data/models/application.dart';
 import 'package:ocupa2/features/my_activity/data/services/application_service.dart';
 
 class ApplicationRepository {
-  const ApplicationRepository({required ApplicationService applicationService})
-      : _applicationService = applicationService;
+  const ApplicationRepository({required this._applicationService});
 
   final ApplicationService _applicationService;
 

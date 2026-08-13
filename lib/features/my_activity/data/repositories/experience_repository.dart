@@ -2,8 +2,7 @@ import 'package:ocupa2/features/my_activity/data/models/experience.dart';
 import 'package:ocupa2/features/my_activity/data/services/experience_service.dart';
 
 class ExperienceRepository {
-  const ExperienceRepository({required ExperienceService experienceService})
-      : _experienceService = experienceService;
+  const ExperienceRepository({required this._experienceService});
 
   final ExperienceService _experienceService;
 

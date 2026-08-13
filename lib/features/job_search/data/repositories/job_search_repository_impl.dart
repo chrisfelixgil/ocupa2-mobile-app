@@ -4,8 +4,7 @@ import 'package:ocupa2/features/job_search/data/repositories/job_search_reposito
 import 'package:ocupa2/features/job_search/data/services/job_search_service.dart';
 
 class JobSearchRepositoryImpl implements JobSearchRepository {
-  const JobSearchRepositoryImpl({required JobSearchService jobSearchService})
-      : _jobSearchService = jobSearchService;
+  const JobSearchRepositoryImpl({required this._jobSearchService});
 
   final JobSearchService _jobSearchService;
 

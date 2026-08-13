@@ -6,8 +6,8 @@ import 'package:ocupa2/features/my_activity/presentation/viewmodels/contracts_st
 
 class ContractsViewModel extends ChangeNotifier {
   ContractsViewModel({
-    required ContractRepository contractRepository,
-  }) : _contractRepository = contractRepository;
+    required this._contractRepository,
+  });
 
   final ContractRepository _contractRepository;
 

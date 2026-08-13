@@ -12,7 +12,6 @@ import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.
 import 'package:provider/provider.dart';
 
 import '../../../helpers/fake_auth_repository.dart';
-
 void main() {
   testWidgets('muestra el equipo con foto, matrícula, teléfono y Telegram', (
     WidgetTester tester,
@@ -94,20 +93,21 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Sesión activa'), findsOneWidget);
+     expect(find.text('Ocupa2'), findsOneWidget);
+     expect(find.text('Noticias de empleo'), findsOneWidget);
 
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('open_about_button')),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.tap(find.byKey(const Key('open_about_button')));
-    await tester.pumpAndSettle();
+     await tester.tap(find.byIcon(Icons.menu_rounded));
+     await tester.pumpAndSettle();
 
-    expect(find.text('Equipo de desarrollo'), findsOneWidget);
-    expect(router.state.uri.toString(), RoutePaths.about);
+     expect(find.text('Acerca de'), findsOneWidget);
 
-    await tester.pumpWidget(const SizedBox.shrink());
+     await tester.tap(find.text('Acerca de'));
+     await tester.pumpAndSettle();
+
+     expect(find.text('Equipo de desarrollo'), findsOneWidget);
+     expect(router.state.uri.toString(), RoutePaths.about);
+
+     await tester.pumpWidget(const SizedBox.shrink());
 
     router.dispose();
     authViewModel.dispose();

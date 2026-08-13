@@ -9,11 +9,12 @@ import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offer
 import 'package:ocupa2/features/job_search/presentation/widgets/offer_card.dart';
 import 'package:provider/provider.dart';
 
-const List<MapEntry<String, String>> _contractTypes = <MapEntry<String, String>>[
-  MapEntry<String, String>('temporal', 'Temporal'),
-  MapEntry<String, String>('fijo', 'Fijo'),
-  MapEntry<String, String>('horas', 'Por horas'),
-];
+const List<MapEntry<String, String>> _contractTypes =
+    <MapEntry<String, String>>[
+      MapEntry<String, String>('temporal', 'Temporal'),
+      MapEntry<String, String>('fijo', 'Fijo'),
+      MapEntry<String, String>('horas', 'Por horas'),
+    ];
 
 class ExploreOffersView extends StatefulWidget {
   const ExploreOffersView({super.key});
@@ -37,8 +38,9 @@ class _ExploreOffersViewState extends State<ExploreOffersView> {
       await context.read<ExploreOffersViewModel>().load();
 
       try {
-        final List<JobType> jobTypes =
-            await context.read<CatalogRepository>().getJobTypes();
+        final List<JobType> jobTypes = await context
+            .read<CatalogRepository>()
+            .getJobTypes();
 
         if (mounted) {
           setState(() {
@@ -54,7 +56,8 @@ class _ExploreOffersViewState extends State<ExploreOffersView> {
 
   @override
   Widget build(BuildContext context) {
-    final ExploreOffersViewModel viewModel = context.watch<ExploreOffersViewModel>();
+    final ExploreOffersViewModel viewModel = context
+        .watch<ExploreOffersViewModel>();
 
     return Scaffold(
       appBar: AppBar(
@@ -190,34 +193,32 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (viewModel.status) {
-      ExploreOffersStatus.idle ||
-      ExploreOffersStatus.loading =>
-        const Center(child: CircularProgressIndicator()),
+      ExploreOffersStatus.idle || ExploreOffersStatus.loading => const Center(
+        child: CircularProgressIndicator(),
+      ),
       ExploreOffersStatus.error => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text(viewModel.errorMessage ?? 'Ocurrió un error.'),
-                const SizedBox(height: AppSpacing.md),
-                OutlinedButton(
-                  onPressed: viewModel.load,
-                  child: const Text('Reintentar'),
-                ),
-              ],
-            ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(viewModel.errorMessage ?? 'Ocurrió un error.'),
+              const SizedBox(height: AppSpacing.md),
+              OutlinedButton(
+                onPressed: viewModel.load,
+                child: const Text('Reintentar'),
+              ),
+            ],
           ),
         ),
+      ),
       ExploreOffersStatus.success => _buildOffersList(context),
     };
   }
 
   Widget _buildOffersList(BuildContext context) {
     if (viewModel.offers.isEmpty) {
-      return const Center(
-        child: Text('No hay ofertas disponibles por ahora.'),
-      );
+      return const Center(child: Text('No hay ofertas disponibles por ahora.'));
     }
 
     return RefreshIndicator(

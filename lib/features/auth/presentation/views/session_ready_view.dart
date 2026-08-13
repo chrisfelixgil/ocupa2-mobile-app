@@ -147,31 +147,27 @@ class SessionReadyView extends StatelessWidget {
                     label: const Text('Explorar ofertas'),
                   ),
                   const SizedBox(height: AppSpacing.md),
+                  // TODO(job_posting): mover a navegación por pestañas junto
+                  // con el resto cuando exista el módulo de Inicio.
                   OutlinedButton.icon(
-                    key: const Key('open_my_experiences_button'),
+                    key: const Key('open_my_offers_button'),
                     onPressed: () {
-                      context.pushNamed(AppRouteNames.myExperiences);
+                      context.goNamed(AppRouteNames.jobPostingMyOffers);
                     },
-                    icon: const Icon(Icons.work_history_outlined),
-                    label: const Text('Mis experiencias'),
+                    icon: const Icon(Icons.work_outline_rounded),
+                    label: const Text('Mis ofertas'),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   OutlinedButton.icon(
-                    key: const Key('open_my_applications_button'),
+                    key: const Key('open_my_payments_button'),
                     onPressed: () {
-                      context.pushNamed(AppRouteNames.myApplications);
+                      context.pushNamed(AppRouteNames.paymentsMyPayments);
                     },
-                    icon: const Icon(Icons.assignment_outlined),
-                    label: const Text('Mis aplicaciones'),
+                    icon: const Icon(Icons.payments_rounded),
+                    label: const Text('Mis pagos'),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   OutlinedButton.icon(
-                    key: const Key('open_my_contracts_button'),
-                    onPressed: () {
-                      context.pushNamed(AppRouteNames.myContracts);
-                    },
-                    icon: const Icon(Icons.description_rounded),
-                    label: const Text('Mis contratos'),
                     key: const Key('open_about_button'),
                     onPressed: () {
                       context.pushNamed(AppRouteNames.about);
