@@ -37,6 +37,10 @@ class _ExploreOffersViewState extends State<ExploreOffersView> {
 
       await context.read<ExploreOffersViewModel>().load();
 
+      if (!mounted) {
+        return;
+      }
+
       try {
         final List<JobType> jobTypes = await context
             .read<CatalogRepository>()
