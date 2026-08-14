@@ -11,11 +11,11 @@ import 'package:latlong2/latlong.dart';
 import '../../../catalog/data/models/job_type.dart';
 import '../../../catalog/data/repositories/catalog_repository.dart';
 import '../../../payments/presentation/viewmodels/make_payment_view_model.dart';
-import '../../../job_search/presentation/viewmodels/explore_offers_view_model.dart';
 import '../../data/models/offer_question.dart';
 import '../viewmodels/create_offer_status.dart';
 import '../viewmodels/create_offer_view_model.dart';
 import 'package:ocupa2/features/job_posting/data/services/upload_service.dart';
+import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offers_view_model.dart';
 
 class CreateOfferView extends StatefulWidget {
   const CreateOfferView({super.key});
@@ -34,8 +34,9 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   final _lngController = TextEditingController();
   final _amountController = TextEditingController(text: '1500');
   final _currencyController = TextEditingController(text: 'DOP');
+  final List<_OfferQuestionForm> _questions = [];
 
-  final List<_OfferQuestionDraft> _questions = <_OfferQuestionDraft>[];
+
 
   String? _jobTypeKey;
   String? _contractType;
@@ -69,6 +70,9 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     _lngController.dispose();
     _amountController.dispose();
     _currencyController.dispose();
+    for (final question in _questions) {
+      question.dispose();
+    }
     super.dispose();
   }
 
@@ -161,27 +165,21 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   // ============================================================
 
   Future<bool> _checkLocationPermission() async {
-    final serviceEnabled =
-        await Geolocator.isLocationServiceEnabled();
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
 
     if (!serviceEnabled) {
-      _showMessage(
-        'Activa la ubicación de tu dispositivo.',
-      );
+      _showMessage('Activa la ubicación de tu dispositivo.');
       return false;
     }
 
-    LocationPermission permission =
-        await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
 
     if (permission == LocationPermission.denied) {
-      _showMessage(
-        'Se necesita permiso para acceder a tu ubicación.',
-      );
+      _showMessage('Se necesita permiso para acceder a tu ubicación.');
       return false;
     }
 
@@ -196,15 +194,9 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     return true;
   }
 
-  Future<String> _getAddressFromCoordinates(
-    double lat,
-    double lng,
-  ) async {
+  Future<String> _getAddressFromCoordinates(double lat, double lng) async {
     try {
-      final placemarks = await placemarkFromCoordinates(
-        lat,
-        lng,
-      );
+      final placemarks = await placemarkFromCoordinates(lat, lng);
 
       if (placemarks.isEmpty) {
         return '';
@@ -213,18 +205,13 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       final place = placemarks.first;
 
       final parts = <String>[
-        if (place.street != null &&
-            place.street!.trim().isNotEmpty)
+        if (place.street != null && place.street!.trim().isNotEmpty)
           place.street!.trim(),
-
         if (place.subLocality != null &&
             place.subLocality!.trim().isNotEmpty)
           place.subLocality!.trim(),
-
-        if (place.locality != null &&
-            place.locality!.trim().isNotEmpty)
+        if (place.locality != null && place.locality!.trim().isNotEmpty)
           place.locality!.trim(),
-
         if (place.administrativeArea != null &&
             place.administrativeArea!.trim().isNotEmpty)
           place.administrativeArea!.trim(),
@@ -232,9 +219,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
       return parts.join(', ');
     } catch (e) {
-      debugPrint(
-        'ERROR OBTENIENDO DIRECCIÓN: $e',
-      );
+      debugPrint('ERROR OBTENIENDO DIRECCIÓN: $e');
 
       return '';
     }
@@ -248,15 +233,13 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     });
 
     try {
-      final hasPermission =
-          await _checkLocationPermission();
+      final hasPermission = await _checkLocationPermission();
 
       if (!hasPermission) {
         return;
       }
 
-      final position =
-          await Geolocator.getCurrentPosition(
+      final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
         ),
@@ -265,11 +248,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       final lat = position.latitude;
       final lng = position.longitude;
 
-      final address =
-          await _getAddressFromCoordinates(
-        lat,
-        lng,
-      );
+      final address = await _getAddressFromCoordinates(lat, lng);
 
       if (!mounted) return;
 
@@ -285,14 +264,10 @@ class _CreateOfferViewState extends State<CreateOfferView> {
         );
       }
     } catch (e) {
-      debugPrint(
-        'ERROR OBTENIENDO UBICACIÓN: $e',
-      );
+      debugPrint('ERROR OBTENIENDO UBICACIÓN: $e');
 
       if (mounted) {
-        _showMessage(
-          'No se pudo obtener la ubicación actual.',
-        );
+        _showMessage('No se pudo obtener la ubicación actual.');
       }
     } finally {
       if (mounted) {
@@ -310,58 +285,39 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   Future<void> _selectLocationFromMap() async {
     LatLng initialPosition;
 
-    final currentLat =
-        double.tryParse(_latController.text);
+    final currentLat = double.tryParse(_latController.text);
 
-    final currentLng =
-        double.tryParse(_lngController.text);
+    final currentLng = double.tryParse(_lngController.text);
 
     if (currentLat != null && currentLng != null) {
-      initialPosition = LatLng(
-        currentLat,
-        currentLng,
-      );
+      initialPosition = LatLng(currentLat, currentLng);
     } else {
       try {
-        final hasPermission =
-            await _checkLocationPermission();
+        final hasPermission = await _checkLocationPermission();
 
         if (hasPermission) {
-          final position =
-              await Geolocator.getCurrentPosition(
+          final position = await Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
               accuracy: LocationAccuracy.high,
             ),
           );
 
-          initialPosition = LatLng(
-            position.latitude,
-            position.longitude,
-          );
+          initialPosition = LatLng(position.latitude, position.longitude);
         } else {
-          initialPosition = const LatLng(
-            18.4861,
-            -69.9312,
-          );
+          initialPosition = const LatLng(18.4861, -69.9312);
         }
       } catch (_) {
-        initialPosition = const LatLng(
-          18.4861,
-          -69.9312,
-        );
+        initialPosition = const LatLng(18.4861, -69.9312);
       }
     }
 
     if (!mounted) return;
 
-    final selectedLocation =
-        await showModalBottomSheet<LatLng>(
+    final selectedLocation = await showModalBottomSheet<LatLng>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        return _MapLocationPicker(
-          initialPosition: initialPosition,
-        );
+        return _MapLocationPicker(initialPosition: initialPosition);
       },
     );
 
@@ -377,11 +333,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       final lat = selectedLocation.latitude;
       final lng = selectedLocation.longitude;
 
-      final address =
-          await _getAddressFromCoordinates(
-        lat,
-        lng,
-      );
+      final address = await _getAddressFromCoordinates(lat, lng);
 
       if (!mounted) return;
 
@@ -397,14 +349,10 @@ class _CreateOfferViewState extends State<CreateOfferView> {
         );
       }
     } catch (e) {
-      debugPrint(
-        'ERROR PROCESANDO UBICACIÓN: $e',
-      );
+      debugPrint('ERROR PROCESANDO UBICACIÓN: $e');
 
       if (mounted) {
-        _showMessage(
-          'No se pudo procesar la ubicación seleccionada.',
-        );
+        _showMessage('No se pudo procesar la ubicación seleccionada.');
       }
     } finally {
       if (mounted) {
@@ -419,9 +367,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-      ),
+      SnackBar(content: Text(message)),
     );
   }
 
@@ -434,13 +380,9 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
     final picked = await showDatePicker(
       context: context,
-      initialDate: now.add(
-        const Duration(days: 7),
-      ),
+      initialDate: now.add(const Duration(days: 7)),
       firstDate: now,
-      lastDate: now.add(
-        const Duration(days: 365),
-      ),
+      lastDate: now.add(const Duration(days: 365)),
     );
 
     if (picked != null && mounted) {
@@ -450,98 +392,294 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     }
   }
 
+  // Added methods for managing question updates and options
+  // Update label of a question
+  void _updateQuestionLabel(int index, String value) {
+    setState(() {
+      _questions[index].labelController.text = value;
+    });
+  }
+
+  // Update type of a question and clear options if not applicable
+  void _updateQuestionType(int index, String type) {
+    setState(() {
+      _questions[index].type = type;
+      if (!_typeSupportsOptions(type)) {
+        for (var ctrl in _questions[index].optionControllers) {
+          ctrl.dispose();
+        }
+        _questions[index].optionControllers.clear();
+      }
+    });
+  }
+
+  // Update required flag
+  void _updateQuestionRequired(int index, bool required) {
+    setState(() {
+      _questions[index].required = required;
+    });
+  }
+
+  // Add option to a question
+  void _addOption(int questionIndex) {
+    setState(() {
+      _questions[questionIndex].optionControllers.add(TextEditingController());
+    });
+  }
+
+  // Remove option from a question
+  void _removeOption(int questionIndex, int optionIndex) {
+    setState(() {
+      _questions[questionIndex].optionControllers[optionIndex].dispose();
+      _questions[questionIndex].optionControllers.removeAt(optionIndex);
+    });
+  }
+
+  // Update option text
+  void _updateOption(int questionIndex, int optionIndex, String value) {
+    setState(() {
+      _questions[questionIndex].optionControllers[optionIndex].text = value;
+    });
+  }
+
+  String? _validateAdditionalQuestions() {
+    for (final q in _questions) {
+      if (!q.isValid) {
+        return 'La pregunta "${q.labelController.text}" no es válida. Asegúrate de que el label esté completo y, si es de selección, al menos dos opciones.';
+      }
+    }
+    return null;
+  }
+
+  // ============================================================
+  // PREGUNTAS ADICIONALES
+  // ============================================================
+
   void _addQuestion() {
     setState(() {
-      _questions.add(
-        const _OfferQuestionDraft(
-          label: '',
-          type: OfferQuestionType.text,
-          required: false,
-          options: <String>[],
-        ),
-      );
+      _questions.add(_OfferQuestionForm());
     });
   }
 
   void _removeQuestion(int index) {
     setState(() {
+      _questions[index].dispose();
       _questions.removeAt(index);
     });
   }
 
-  void _updateQuestionLabel(int index, String value) {
-    setState(() {
-      _questions[index] = _questions[index].copyWith(label: value);
-    });
+  Widget _buildQuestionCard(int index) {
+    final question = _questions[index];
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Pregunta ${index + 1}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _removeQuestion(index),
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                ),
+              ],
+            ),
+            TextFormField(
+              controller: question.labelController,
+              onChanged: (val) => _updateQuestionLabel(index, val),
+              decoration: const InputDecoration(
+                labelText: 'Texto de la pregunta',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: question.type,
+              decoration: const InputDecoration(
+                labelText: 'Tipo de respuesta',
+                border: OutlineInputBorder(),
+              ),
+              items: _questionTypeLabels.entries
+                  .map(
+                    (entry) => DropdownMenuItem(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  question.type = value;
+                });
+              },
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('¿Es obligatoria?'),
+              value: question.required,
+              onChanged: (value) {
+                setState(() {
+                  question.required = value;
+                });
+              },
+            ),
+            if (_typeSupportsOptions(question.type)) ...[
+              const SizedBox(height: 4),
+              const Text(
+                'Opciones',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              ...List.generate(question.optionControllers.length, (optIndex) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: question.optionControllers[optIndex],
+                          decoration: InputDecoration(
+                            labelText: 'Opción ${optIndex + 1}',
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => _removeOption(index, optIndex),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              TextButton.icon(
+                onPressed: () => _addOption(index),
+                icon: const Icon(Icons.add),
+                label: const Text('Agregar opción'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
-  void _updateQuestionType(int index, String value) {
-    setState(() {
-      _questions[index] = _questions[index].copyWith(
-        type: value,
-        options: value == OfferQuestionType.select
-            ? (_questions[index].options.isEmpty ? const <String>[''] : _questions[index].options)
-            : const <String>[],
-      );
-    });
-  }
+  // ============================================================
+  // MODAL DE CONFIRMACIÓN DE PAGO
+  // ============================================================
 
-  void _updateQuestionRequired(int index, bool value) {
-    setState(() {
-      _questions[index] = _questions[index].copyWith(required: value);
-    });
-  }
+  Future<_PaymentConfirmationResult?> _showPaymentConfirmationDialog({
+    required double amount,
+    required String currency,
+  }) {
+    return showDialog<_PaymentConfirmationResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirmar pago'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Monto a pagar: \$1 USD',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  initialValue: '4242424242424232',
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Número de tarjeta',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: '12',
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Mes exp.',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: '2030',
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Año exp.',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextFormField(
+                        initialValue: '123',
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'CVV',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  initialValue: 'Proveedor',
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Titular de la tarjeta',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(null);
+              },
+              child: const Text('Rechazar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final result = _PaymentConfirmationResult(
+                  cardNumber: '4242424242424242',
+                  cvv: '123',
+                  expMonth: 12,
+                  expYear: 2030,
+                  cardholder: 'Proveedor',
+                );
 
-  void _addOption(int index) {
-    setState(() {
-      _questions[index] = _questions[index].copyWith(
-        options: <String>[..._questions[index].options, ''],
-      );
-    });
-  }
-
-  void _updateOption(int questionIndex, int optionIndex, String value) {
-    setState(() {
-      final List<String> updatedOptions = [..._questions[questionIndex].options];
-      updatedOptions[optionIndex] = value;
-      _questions[questionIndex] = _questions[questionIndex].copyWith(
-        options: updatedOptions,
-      );
-    });
-  }
-
-  void _removeOption(int questionIndex, int optionIndex) {
-    setState(() {
-      final List<String> updatedOptions = [..._questions[questionIndex].options];
-      if (optionIndex < updatedOptions.length) {
-        updatedOptions.removeAt(optionIndex);
-      }
-      _questions[questionIndex] = _questions[questionIndex].copyWith(
-        options: updatedOptions,
-      );
-    });
-  }
-
-  String? _validateAdditionalQuestions() {
-    for (final _OfferQuestionDraft draft in _questions) {
-      final String label = draft.label.trim();
-      if (label.isEmpty) {
-        continue;
-      }
-
-      if (draft.type == OfferQuestionType.select) {
-        final List<String> validOptions = draft.options
-            .map((option) => option.trim())
-            .where((option) => option.isNotEmpty)
-            .toList();
-
-        if (validOptions.length < 2) {
-          return 'La pregunta "$label" de tipo selección necesita al menos 2 opciones.';
-        }
-      }
-    }
-
-    return null;
+                Navigator.of(dialogContext).pop(result);
+              },
+              child: const Text('Aceptar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // ============================================================
@@ -555,32 +693,22 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
     if (_latController.text.trim().isEmpty ||
         _lngController.text.trim().isEmpty) {
-      _showMessage(
-        'Selecciona una ubicación.',
-      );
+      _showMessage('Selecciona una ubicación.');
       return;
     }
 
     if (_deadline == null) {
-      _showMessage(
-        'Selecciona la fecha límite.',
-      );
+      _showMessage('Selecciona la fecha límite.');
       return;
     }
 
-    if (_photo == null ||
-        _photoUrl == null ||
-        _photoUrl!.isEmpty) {
-      _showMessage(
-        'Selecciona y espera a que se suba la foto.',
-      );
+    if (_photo == null || _photoUrl == null || _photoUrl!.isEmpty) {
+      _showMessage('Selecciona y espera a que se suba la foto.');
       return;
     }
 
     if (_uploadingPhoto) {
-      _showMessage(
-        'Espera a que termine de subir la imagen.',
-      );
+      _showMessage('Espera a que termine de subir la imagen.');
       return;
     }
 
@@ -590,99 +718,72 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       return;
     }
 
-    final amount = double.tryParse(
-      _amountController.text.trim(),
-    );
-
+    final amount = double.tryParse(_amountController.text.trim());
     if (amount == null || amount <= 0) {
-      _showMessage(
-        'El monto debe ser válido.',
-      );
+      _showMessage('El monto debe ser válido.');
       return;
     }
 
-    final currency =
-        _currencyController.text.trim();
+    final currency = _currencyController.text.trim();
 
     final List<OfferQuestion> questions = _questions
-        .where((draft) => draft.label.trim().isNotEmpty)
-        .map((draft) {
-          final String normalizedType = draft.type == OfferQuestionType.boolean
-              ? OfferQuestionType.check
-              : draft.type;
-          final List<String> options = normalizedType == OfferQuestionType.select
-              ? draft.options
-                  .map((option) => option.trim())
-                  .where((option) => option.isNotEmpty)
-                  .toList()
-              : const <String>[];
-
-          return OfferQuestion(
-            label: draft.label.trim(),
-            type: normalizedType,
-            required: draft.required,
-            options: options,
-          );
-        })
+        .where((q) => q.labelController.text.trim().isNotEmpty)
+        .map((q) => q.toOfferQuestion())
         .toList();
 
-    final createOfferViewModel =
-        context.read<CreateOfferViewModel>();
-
-    final paymentViewModel =
-        context.read<MakePaymentViewModel>();
-
-    final paymentOk =
-        await paymentViewModel.pay(
+    // Se muestra el modal de confirmación antes de procesar el pago.
+    final confirmation = await _showPaymentConfirmationDialog(
       amount: amount,
       currency: currency,
-      cardNumber: '4242424242424242',
-      cvv: '123',
-      expMonth: 12,
-      expYear: 2030,
-      cardholder: 'Proveedor',
+    );
+
+    if (!mounted) return;
+
+    if (confirmation == null) {
+      _showMessage('Pago rechazado por el usuario.');
+      return;
+    }
+
+    final createOfferViewModel = context.read<CreateOfferViewModel>();
+
+    final paymentViewModel = context.read<MakePaymentViewModel>();
+
+    final paymentOk = await paymentViewModel.pay(
+      amount: amount,
+      currency: currency,
+      cardNumber: confirmation.cardNumber,
+      cvv: confirmation.cvv,
+      expMonth: confirmation.expMonth,
+      expYear: confirmation.expYear,
+      cardholder: confirmation.cardholder,
     );
 
     if (!mounted) return;
 
     if (!paymentOk) {
-      _showMessage(
-        paymentViewModel.errorMessage ??
-            'No se pudo realizar el pago',
-      );
+      _showMessage(paymentViewModel.errorMessage ?? 'No se pudo realizar el pago');
       return;
     }
 
-    final payment =
-        paymentViewModel.payment;
+    final payment = paymentViewModel.payment;
 
-    if (payment == null ||
-        payment.id.isEmpty) {
-      _showMessage(
-        'El pago fue realizado, pero no se recibió su ID',
-      );
+    if (payment == null || payment.id.isEmpty) {
+      _showMessage('El pago fue realizado, pero no se recibió su ID');
       return;
     }
 
-    final offerOk =
-        await createOfferViewModel.submit(
+    final offerOk = await createOfferViewModel.submit(
       jobTypeKey: _jobTypeKey!,
       contractType: _contractType!,
-      description:
-          _descriptionController.text.trim(),
-      address:
-          _addressController.text.trim(),
+      description: _descriptionController.text.trim(),
+      address: _addressController.text.trim(),
 
       // Se envía la URL pública, no la ruta local.
       photo: _photoUrl,
 
       paymentId: payment.id,
-      lat: double.parse(
-        _latController.text.trim(),
-      ),
-      lng: double.parse(
-        _lngController.text.trim(),
-      ),
+      lat: double.parse(_latController.text.trim()),
+      lng: double.parse(_lngController.text.trim()),
       amount: amount,
       currency: currency,
       deadline: _deadline!,
@@ -694,9 +795,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     if (offerOk) {
       context.read<ExploreOffersViewModel>().load();
 
-      _showMessage(
-        'Pago realizado y oferta publicada correctamente',
-      );
+      _showMessage('Pago realizado y oferta publicada correctamente');
 
       Navigator.of(context).pop();
     } else {
@@ -713,29 +812,23 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
   @override
   Widget build(BuildContext context) {
-    final createOfferViewModel =
-        context.watch<CreateOfferViewModel>();
+    final createOfferViewModel = context.watch<CreateOfferViewModel>();
 
-    final paymentViewModel =
-        context.watch<MakePaymentViewModel>();
+    final paymentViewModel = context.watch<MakePaymentViewModel>();
 
-    final isLoading =
-        createOfferViewModel.isSubmitting ||
+    final isLoading = createOfferViewModel.isSubmitting ||
         paymentViewModel.isSubmitting ||
         _loadingLocation ||
         _uploadingPhoto;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Publicar oferta'),
-      ),
+      appBar: AppBar(title: const Text('Publicar oferta')),
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-
               // ==================================================
               // TIPO DE TRABAJO
               // ==================================================
@@ -752,41 +845,28 @@ class _CreateOfferViewState extends State<CreateOfferView> {
                   children: [
                     Text(
                       _jobTypesError!,
-                      style: const TextStyle(
-                        color: Colors.red,
-                      ),
+                      style: const TextStyle(color: Colors.red),
                     ),
                     const SizedBox(height: 8),
                     OutlinedButton(
                       onPressed: _loadJobTypes,
-                      child: const Text(
-                        'Reintentar',
-                      ),
+                      child: const Text('Reintentar'),
                     ),
                   ],
                 )
               else
                 DropdownButtonFormField<String>(
                   initialValue: _jobTypeKey,
-                  decoration:
-                      const InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Tipo de trabajo',
                     border: OutlineInputBorder(),
                   ),
                   items: _jobTypes
-                      .where(
-                        (jobType) =>
-                            jobType.key.isNotEmpty,
-                      )
+                      .where((jobType) => jobType.key.isNotEmpty)
                       .map(
-                        (jobType) =>
-                            DropdownMenuItem<String>(
+                        (jobType) => DropdownMenuItem<String>(
                           value: jobType.key,
-                          child: Text(
-                            _formatJobType(
-                              jobType.key,
-                            ),
-                          ),
+                          child: Text(_formatJobType(jobType.key)),
                         ),
                       )
                       .toList(),
@@ -798,8 +878,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
                           });
                         },
                   validator: (value) {
-                    if (value == null ||
-                        value.isEmpty) {
+                    if (value == null || value.isEmpty) {
                       return 'Selecciona un tipo de trabajo';
                     }
 
@@ -815,24 +894,14 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
               DropdownButtonFormField<String>(
                 initialValue: _contractType,
-                decoration:
-                    const InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Tipo de contrato',
                   border: OutlineInputBorder(),
                 ),
                 items: const [
-                  DropdownMenuItem(
-                    value: 'temporal',
-                    child: Text('Temporal'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'fijo',
-                    child: Text('Fijo'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'horas',
-                    child: Text('Por horas'),
-                  ),
+                  DropdownMenuItem(value: 'temporal', child: Text('Temporal')),
+                  DropdownMenuItem(value: 'fijo', child: Text('Fijo')),
+                  DropdownMenuItem(value: 'horas', child: Text('Por horas')),
                 ],
                 onChanged: isLoading
                     ? null
@@ -842,8 +911,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
                         });
                       },
                 validator: (value) {
-                  if (value == null ||
-                      value.isEmpty) {
+                  if (value == null || value.isEmpty) {
                     return 'Selecciona un tipo de contrato';
                   }
 
@@ -858,17 +926,14 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
 
               TextFormField(
-                controller:
-                    _descriptionController,
+                controller: _descriptionController,
                 maxLines: 4,
-                decoration:
-                    const InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Descripción',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null ||
-                      value.trim().isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return 'Requerido';
                   }
 
@@ -884,30 +949,22 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
               const Text(
                 'Ubicación del trabajo',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 8),
 
               TextFormField(
-                controller:
-                    _addressController,
+                controller: _addressController,
                 readOnly: true,
-                decoration:
-                    const InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Dirección',
-                  hintText:
-                      'Selecciona una ubicación',
+                  hintText: 'Selecciona una ubicación',
                   border: OutlineInputBorder(),
-                  prefixIcon:
-                      Icon(Icons.location_on),
+                  prefixIcon: Icon(Icons.location_on),
                 ),
                 validator: (value) {
-                  if (value == null ||
-                      value.trim().isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return 'Selecciona una ubicación';
                   }
 
@@ -920,43 +977,24 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               Row(
                 children: [
                   Expanded(
-                    child:
-                        OutlinedButton.icon(
-                      onPressed: isLoading
-                          ? null
-                          : _useCurrentLocation,
+                    child: OutlinedButton.icon(
+                      onPressed: isLoading ? null : _useCurrentLocation,
                       icon: _loadingLocation
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child:
-                                  CircularProgressIndicator(
-                                strokeWidth: 2,
-                              ),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(
-                              Icons.my_location,
-                            ),
-                      label: const Text(
-                        'Mi ubicación',
-                      ),
+                          : const Icon(Icons.my_location),
+                      label: const Text('Mi ubicación'),
                     ),
                   ),
-
                   const SizedBox(width: 8),
-
                   Expanded(
-                    child:
-                        OutlinedButton.icon(
-                      onPressed: isLoading
-                          ? null
-                          : _selectLocationFromMap,
-                      icon: const Icon(
-                        Icons.map,
-                      ),
-                      label: const Text(
-                        'Seleccionar mapa',
-                      ),
+                    child: OutlinedButton.icon(
+                      onPressed: isLoading ? null : _selectLocationFromMap,
+                      icon: const Icon(Icons.map),
+                      label: const Text('Seleccionar mapa'),
                     ),
                   ),
                 ],
@@ -972,30 +1010,22 @@ class _CreateOfferViewState extends State<CreateOfferView> {
                 children: [
                   Expanded(
                     child: TextFormField(
-                      controller:
-                          _latController,
+                      controller: _latController,
                       readOnly: true,
-                      decoration:
-                          const InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Latitud',
-                        border:
-                            OutlineInputBorder(),
+                        border: OutlineInputBorder(),
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
                   Expanded(
                     child: TextFormField(
-                      controller:
-                          _lngController,
+                      controller: _lngController,
                       readOnly: true,
-                      decoration:
-                          const InputDecoration(
+                      decoration: const InputDecoration(
                         labelText: 'Longitud',
-                        border:
-                            OutlineInputBorder(),
+                        border: OutlineInputBorder(),
                       ),
                     ),
                   ),
@@ -1012,33 +1042,22 @@ class _CreateOfferViewState extends State<CreateOfferView> {
                 children: [
                   Expanded(
                     child: TextFormField(
-                      controller:
-                          _amountController,
+                      controller: _amountController,
                       keyboardType:
-                          const TextInputType
-                              .numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration:
-                          const InputDecoration(
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
                         labelText: 'Monto',
-                        border:
-                            OutlineInputBorder(),
+                        border: OutlineInputBorder(),
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
                   Expanded(
                     child: TextFormField(
-                      controller:
-                          _currencyController,
-                      decoration:
-                          const InputDecoration(
+                      controller: _currencyController,
+                      decoration: const InputDecoration(
                         labelText: 'Moneda',
-                        border:
-                            OutlineInputBorder(),
+                        border: OutlineInputBorder(),
                       ),
                     ),
                   ),
@@ -1053,44 +1072,29 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
               const Text(
                 'Foto del trabajo',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 8),
 
               if (_photo != null)
                 ClipRRect(
-                  borderRadius:
-                      BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12),
                   child: Image.file(
                     File(_photo!),
                     height: 200,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder:
-                        (_, _, _) {
+                    errorBuilder: (_, _, _) {
                       return Container(
                         height: 200,
                         width: double.infinity,
-                        alignment:
-                            Alignment.center,
-                        decoration:
-                            BoxDecoration(
-                          border: Border.all(
-                            color: Colors.grey,
-                          ),
-                          borderRadius:
-                              BorderRadius.circular(
-                            12,
-                          ),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(
-                          Icons.image,
-                          size: 60,
-                        ),
+                        child: const Icon(Icons.image, size: 60),
                       );
                     },
                   ),
@@ -1101,20 +1105,14 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed:
-                      isLoading ? null : _pickImage,
+                  onPressed: isLoading ? null : _pickImage,
                   icon: _uploadingPhoto
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child:
-                              CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(
-                          Icons.photo_library,
-                        ),
+                      : const Icon(Icons.photo_library),
                   label: Text(
                     _uploadingPhoto
                         ? 'Subiendo imagen...'
@@ -1130,17 +1128,11 @@ class _CreateOfferViewState extends State<CreateOfferView> {
                   padding: EdgeInsets.only(top: 6),
                   child: Row(
                     children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 18,
-                        color: Colors.green,
-                      ),
+                      Icon(Icons.check_circle, size: 18, color: Colors.green),
                       SizedBox(width: 6),
                       Text(
                         'Imagen subida correctamente',
-                        style: TextStyle(
-                          color: Colors.green,
-                        ),
+                        style: TextStyle(color: Colors.green),
                       ),
                     ],
                   ),
@@ -1148,13 +1140,10 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
               if (_photo == null)
                 const Padding(
-                  padding:
-                      EdgeInsets.only(top: 4),
+                  padding: EdgeInsets.only(top: 4),
                   child: Text(
                     'La foto es obligatoria',
-                    style: TextStyle(
-                      color: Colors.red,
-                    ),
+                    style: TextStyle(color: Colors.red),
                   ),
                 ),
 
@@ -1165,22 +1154,15 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
 
               ListTile(
-                contentPadding:
-                    EdgeInsets.zero,
+                contentPadding: EdgeInsets.zero,
                 title: Text(
                   _deadline == null
                       ? 'Selecciona fecha límite'
                       : 'Fecha límite: '
-                          '${_deadline!.toLocal()}'
-                              .split(' ')
-                              .first,
+                          '${_deadline!.toLocal()}'.split(' ').first,
                 ),
-                trailing: const Icon(
-                  Icons.calendar_today,
-                ),
-                onTap: isLoading
-                    ? null
-                    : _pickDeadline,
+                trailing: const Icon(Icons.calendar_today),
+                onTap: isLoading ? null : _pickDeadline,
               ),
 
               const SizedBox(height: 20),
@@ -1189,145 +1171,27 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // PREGUNTAS ADICIONALES
               // ==================================================
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  const Text(
-                    'Preguntas adicionales',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: _addQuestion,
-                    icon: const Icon(Icons.add_circle_outline_rounded),
-                    label: const Text('Agregar'),
-                  ),
-                ],
+              const Text(
+                'Preguntas adicionales (opcional)',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Agrega preguntas que el postulante deberá responder al aplicar.',
+                style: TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 8),
-              if (_questions.isEmpty)
-                const Text(
-                  'Sin preguntas extras. Puedes dejarla vacía y el aplicante solo enviará un comentario.',
-                  style: TextStyle(color: Colors.grey),
-                )
-              else
-                ..._questions.asMap().entries.map((entry) {
-                  final int index = entry.key;
-                  final _OfferQuestionDraft draft = entry.value;
 
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: TextFormField(
-                                initialValue: draft.label,
-                                decoration: const InputDecoration(
-                                  labelText: 'Pregunta',
-                                  border: OutlineInputBorder(),
-                                ),
-                                onChanged: (value) => _updateQuestionLabel(index, value),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () => _removeQuestion(index),
-                              icon: const Icon(Icons.delete_outline_rounded),
-                              tooltip: 'Eliminar pregunta',
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          value: draft.type,
-                          decoration: const InputDecoration(
-                            labelText: 'Tipo',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const <DropdownMenuItem<String>>[
-                            DropdownMenuItem<String>(
-                              value: OfferQuestionType.text,
-                              child: Text('Texto corto'),
-                            ),
-                            DropdownMenuItem<String>(
-                              value: OfferQuestionType.date,
-                              child: Text('Fecha'),
-                            ),
-                            DropdownMenuItem<String>(
-                              value: OfferQuestionType.select,
-                              child: Text('Selección'),
-                            ),
-                            DropdownMenuItem<String>(
-                              value: OfferQuestionType.check,
-                              child: Text('Casilla / sí o no'),
-                            ),
-                          ],
-                          onChanged: (String? value) {
-                            if (value != null) {
-                              _updateQuestionType(index, value);
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 8),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Obligatoria'),
-                          value: draft.required,
-                          onChanged: (value) => _updateQuestionRequired(index, value),
-                        ),
-                        if (draft.type == OfferQuestionType.select) ...<Widget>[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: <Widget>[
-                              const Expanded(
-                                child: Text(
-                                  'Opciones',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                              TextButton.icon(
-                                onPressed: () => _addOption(index),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Opción'),
-                              ),
-                            ],
-                          ),
-                          ...draft.options.asMap().entries.map((optionEntry) {
-                            final int optionIndex = optionEntry.key;
-                            final String option = optionEntry.value;
-                            return Row(
-                              children: <Widget>[
-                                Expanded(
-                                  child: TextFormField(
-                                    initialValue: option,
-                                    decoration: InputDecoration(
-                                      labelText: 'Opción ${optionIndex + 1}',
-                                      border: const OutlineInputBorder(),
-                                    ),
-                                    onChanged: (value) => _updateOption(index, optionIndex, value),
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () => _removeOption(index, optionIndex),
-                                  icon: const Icon(Icons.close_rounded),
-                                ),
-                              ],
-                            );
-                          }),
-                        ],
-                      ],
-                    ),
-                  );
-                }),
+              ..._questions
+                  .asMap()
+                  .entries
+                  .map((e) => _buildQuestionCard(e.key)),
+
+              OutlinedButton.icon(
+                onPressed: isLoading ? null : _addQuestion,
+                icon: const Icon(Icons.add),
+                label: const Text('Agregar pregunta'),
+              ),
 
               const SizedBox(height: 20),
 
@@ -1335,18 +1199,11 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ERROR
               // ==================================================
 
-              if (createOfferViewModel
-                          .status ==
-                      CreateOfferStatus.error &&
-                  createOfferViewModel
-                          .errorMessage !=
-                      null)
+              if (createOfferViewModel.status == CreateOfferStatus.error &&
+                  createOfferViewModel.errorMessage != null)
                 Text(
-                  createOfferViewModel
-                      .errorMessage!,
-                  style: const TextStyle(
-                    color: Colors.red,
-                  ),
+                  createOfferViewModel.errorMessage!,
+                  style: const TextStyle(color: Colors.red),
                 ),
 
               const SizedBox(height: 12),
@@ -1356,18 +1213,13 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
 
               if (isLoading)
-                const Center(
-                  child:
-                      CircularProgressIndicator(),
-                )
+                const Center(child: CircularProgressIndicator())
               else
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _submit,
-                    child: const Text(
-                      'Pagar y publicar oferta',
-                    ),
+                    child: const Text('Pagar y publicar oferta'),
                   ),
                 ),
             ],
@@ -1379,98 +1231,128 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 }
 
 // ================================================================
-// SELECTOR DE UBICACIÓN EN MAPA - OPENSTREETMAP
+// RESULTADO DEL MODAL DE CONFIRMACIÓN DE PAGO
 // ================================================================
 
-class _OfferQuestionDraft {
-  const _OfferQuestionDraft({
-    required this.label,
-    required this.type,
-    required this.required,
-    required this.options,
+class _PaymentConfirmationResult {
+  final String cardNumber;
+  final String cvv;
+  final int expMonth;
+  final int expYear;
+  final String cardholder;
+
+  _PaymentConfirmationResult({
+    required this.cardNumber,
+    required this.cvv,
+    required this.expMonth,
+    required this.expYear,
+    required this.cardholder,
   });
+}
 
-  final String label;
-  final String type;
-  final bool required;
-  final List<String> options;
+// ================================================================
+// PREGUNTAS ADICIONALES DE LA OFERTA
+// ================================================================
 
-  _OfferQuestionDraft copyWith({
-    String? label,
-    String? type,
-    bool? required,
-    List<String>? options,
-  }) {
-    return _OfferQuestionDraft(
-      label: label ?? this.label,
-      type: type ?? this.type,
-      required: required ?? this.required,
-      options: options ?? this.options,
+/// Etiquetas legibles para cada valor de OfferQuestionType
+/// (definido en data/models/offer_question.dart).
+const Map<String, String> _questionTypeLabels = {
+  OfferQuestionType.text: 'Texto',
+  OfferQuestionType.date: 'Fecha',
+  OfferQuestionType.select: 'Selección',
+  OfferQuestionType.check: 'Casilla de verificación',
+};
+
+bool _typeSupportsOptions(String type) => type == OfferQuestionType.select;
+
+class _OfferQuestionForm {
+  final TextEditingController labelController = TextEditingController();
+  String type = OfferQuestionType.text;
+  bool required = false;
+  List<TextEditingController> optionControllers = [];
+
+  void dispose() {
+    labelController.dispose();
+    for (final controller in optionControllers) {
+      controller.dispose();
+    }
+  }
+
+  bool get isValid {
+    if (labelController.text.trim().isEmpty) return false;
+
+    if (_typeSupportsOptions(type)) {
+      final validOptions = optionControllers
+          .map((c) => c.text.trim())
+          .where((o) => o.isNotEmpty)
+          .length;
+      if (validOptions < 2) return false;
+    }
+
+    return true;
+  }
+
+  OfferQuestion toOfferQuestion() {
+    return OfferQuestion(
+      label: labelController.text.trim(),
+      type: type,
+      required: required,
+      options: _typeSupportsOptions(type)
+          ? optionControllers
+              .map((c) => c.text.trim())
+              .where((o) => o.isNotEmpty)
+              .toList()
+          : const [],
     );
   }
 }
 
+// ================================================================
+// SELECTOR DE UBICACIÓN EN MAPA - OPENSTREETMAP
+// ================================================================
+
 class _MapLocationPicker extends StatefulWidget {
   final LatLng initialPosition;
 
-  const _MapLocationPicker({
-    required this.initialPosition,
-  });
+  const _MapLocationPicker({required this.initialPosition});
 
   @override
-  State<_MapLocationPicker> createState() =>
-      _MapLocationPickerState();
+  State<_MapLocationPicker> createState() => _MapLocationPickerState();
 }
 
-class _MapLocationPickerState
-    extends State<_MapLocationPicker> {
+class _MapLocationPickerState extends State<_MapLocationPicker> {
   late LatLng _selectedPosition;
 
-  final MapController _mapController =
-      MapController();
+  final MapController _mapController = MapController();
 
   @override
   void initState() {
     super.initState();
 
-    _selectedPosition =
-        widget.initialPosition;
+    _selectedPosition = widget.initialPosition;
   }
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height:
-          MediaQuery.of(context).size.height *
-              0.85,
+      height: MediaQuery.of(context).size.height * 0.85,
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
                 const Expanded(
                   child: Text(
                     'Seleccionar ubicación',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
-
                 IconButton(
                   onPressed: () {
-                    Navigator.of(context)
-                        .pop();
+                    Navigator.of(context).pop();
                   },
-                  icon: const Icon(
-                    Icons.close,
-                  ),
+                  icon: const Icon(Icons.close),
                 ),
               ],
             ),
@@ -1480,38 +1362,29 @@ class _MapLocationPickerState
 
           Expanded(
             child: FlutterMap(
-              mapController:
-                  _mapController,
+              mapController: _mapController,
               options: MapOptions(
-                initialCenter:
-                    widget.initialPosition,
+                initialCenter: widget.initialPosition,
                 initialZoom: 16,
-
                 onTap: (tapPosition, point) {
                   setState(() {
-                    _selectedPosition =
-                        point;
+                    _selectedPosition = point;
                   });
                 },
               ),
-
               children: [
                 TileLayer(
                   urlTemplate:
                       'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName:
-                      'do.edu.itla.ocupa2',
+                  userAgentPackageName: 'do.edu.itla.ocupa2',
                 ),
-
                 MarkerLayer(
                   markers: [
                     Marker(
-                      point:
-                          _selectedPosition,
+                      point: _selectedPosition,
                       width: 50,
                       height: 50,
-                      alignment:
-                          Alignment.topCenter,
+                      alignment: Alignment.topCenter,
                       child: const Icon(
                         Icons.location_pin,
                         size: 50,
@@ -1527,23 +1400,15 @@ class _MapLocationPickerState
           SafeArea(
             top: false,
             child: Padding(
-              padding:
-                  const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.of(context)
-                        .pop(
-                      _selectedPosition,
-                    );
+                    Navigator.of(context).pop(_selectedPosition);
                   },
-                  icon: const Icon(
-                    Icons.check,
-                  ),
-                  label: const Text(
-                    'Usar esta ubicación',
-                  ),
+                  icon: const Icon(Icons.check),
+                  label: const Text('Usar esta ubicación'),
                 ),
               ),
             ),
