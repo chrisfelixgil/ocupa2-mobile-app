@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ocupa2/app/router/app_routes.dart';
-import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.dart';
 import 'package:provider/provider.dart';
 
 import '../viewmodels/home_status.dart';
@@ -20,46 +19,8 @@ class HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<HomeView> {
-  Future<void> _requestLogout(BuildContext context) async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Cerrar sesión'),
-          content: const Text(
-            '¿Estás seguro de que deseas cerrar tu sesión en este dispositivo?',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Cerrar sesión'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true || !context.mounted) {
-      return;
-    }
-
-    final SessionViewModel session = context.read<SessionViewModel>();
-    final bool success = await session.logout();
-
-    if (!success && context.mounted) {
-      final String message =
-          session.sessionActionErrorMessage ??
-          'No fue posible cerrar la sesión.';
-
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(message)));
-    }
-  }
+  bool _showAllNews = false;
+  bool _showAllVideos = false;
 
   @override
   void initState() {
@@ -80,196 +41,111 @@ class _HomeViewState extends State<HomeView> {
           PopupMenuButton<String>(
             tooltip: 'Menú',
             icon: const Icon(Icons.menu_rounded),
-
             onSelected: (String value) {
               switch (value) {
                 case 'offers':
-                  context.pushNamed(
-                    AppRouteNames.jobSearchExplore,
-                  );
+                  context.pushNamed(AppRouteNames.jobSearchExplore);
                   break;
 
                 case 'myOffers':
-                  context.pushNamed(
-                    AppRouteNames.jobPostingMyOffers,
-                  );
+                  context.pushNamed(AppRouteNames.jobPostingMyOffers);
                   break;
 
                 case 'experiences':
-                  context.pushNamed(
-                    AppRouteNames.myExperiences,
-                  );
+                  context.pushNamed(AppRouteNames.myExperiences);
                   break;
 
                 case 'applications':
-                  context.pushNamed(
-                    AppRouteNames.myApplications,
-                  );
+                  context.pushNamed(AppRouteNames.myApplications);
                   break;
 
                 case 'contracts':
-                  context.pushNamed(
-                    AppRouteNames.myContracts,
-                  );
+                  context.pushNamed(AppRouteNames.myContracts);
                   break;
 
                 case 'myPayments':
-                  context.pushNamed(
-                    AppRouteNames.paymentsMyPayments,
-                  );
+                  context.pushNamed(AppRouteNames.paymentsMyPayments);
                   break;
 
                 case 'changePassword':
-                  context.pushNamed(
-                    AppRouteNames.changePassword,
-                  );
+                  context.pushNamed(AppRouteNames.changePassword);
                   break;
 
                 case 'about':
-                  context.pushNamed(
-                    AppRouteNames.about,
-                  );
-                  break;
-
-                case 'logout':
-                  _requestLogout(context);
+                  context.pushNamed(AppRouteNames.about);
                   break;
               }
             },
-
-            itemBuilder: (BuildContext context) => [
+            itemBuilder: (BuildContext context) => const [
               PopupMenuItem<String>(
                 value: 'offers',
                 child: ListTile(
-                  leading: Icon(
-                    Icons.travel_explore_rounded,
-                  ),
-                  title: Text(
-                    'Explorar ofertas',
-                  ),
+                  leading: Icon(Icons.travel_explore_rounded),
+                  title: Text('Explorar ofertas'),
                 ),
               ),
-
               PopupMenuItem<String>(
                 value: 'myOffers',
                 child: ListTile(
-                  leading: Icon(
-                    Icons.campaign_outlined,
-                  ),
-                  title: Text(
-                    'Mis ofertas',
-                  ),
+                  leading: Icon(Icons.campaign_outlined),
+                  title: Text('Mis ofertas'),
                 ),
               ),
-
               PopupMenuItem<String>(
                 value: 'experiences',
                 child: ListTile(
-                  leading: Icon(
-                    Icons.work_history_outlined,
-                  ),
-                  title: Text(
-                    'Mis experiencias',
-                  ),
+                  leading: Icon(Icons.work_history_outlined),
+                  title: Text('Mis experiencias'),
                 ),
               ),
-
               PopupMenuItem<String>(
                 value: 'applications',
                 child: ListTile(
-                  leading: Icon(
-                    Icons.assignment_outlined,
-                  ),
-                  title: Text(
-                    'Mis aplicaciones',
-                  ),
+                  leading: Icon(Icons.assignment_outlined),
+                  title: Text('Mis aplicaciones'),
                 ),
               ),
-
               PopupMenuItem<String>(
                 value: 'contracts',
                 child: ListTile(
-                  leading: Icon(
-                    Icons.description_rounded,
-                  ),
-                  title: Text(
-                    'Mis contratos',
-                  ),
+                  leading: Icon(Icons.description_rounded),
+                  title: Text('Mis contratos'),
                 ),
               ),
-
               PopupMenuItem<String>(
                 value: 'myPayments',
                 child: ListTile(
-                  leading: Icon(
-                    Icons.payments_outlined,
-                  ),
-                  title: Text(
-                    'Mis pagos',
-                  ),
+                  leading: Icon(Icons.payments_outlined),
+                  title: Text('Mis pagos'),
                 ),
               ),
-
               PopupMenuDivider(),
-
               PopupMenuItem<String>(
                 value: 'changePassword',
                 child: ListTile(
-                  leading: Icon(
-                    Icons.password_rounded,
-                  ),
-                  title: Text(
-                    'Cambiar contraseña',
-                  ),
+                  leading: Icon(Icons.password_rounded),
+                  title: Text('Cambiar contraseña'),
                 ),
               ),
-
               PopupMenuItem<String>(
                 value: 'about',
                 child: ListTile(
-                  leading: Icon(
-                    Icons.info_outline_rounded,
-                  ),
-                  title: Text(
-                    'Acerca de',
-                  ),
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'logout',
-                child: ListTile(
-                  leading: Icon(
-                    Icons.logout_rounded,
-                  ),
-                  title: Text(
-                    'Cerrar sesión',
-                  ),
+                  leading: Icon(Icons.info_outline_rounded),
+                  title: Text('Acerca de'),
                 ),
               ),
             ],
           ),
-
           const SizedBox(width: 8),
         ],
       ),
-
       body: Consumer<HomeViewModel>(
-        builder: (
-          context,
-          viewModel,
-          child,
-        ) {
+        builder: (context, viewModel, child) {
           return RefreshIndicator(
             onRefresh: viewModel.refresh,
-
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-
-              padding: const EdgeInsets.only(
-                top: 16,
-                bottom: 40,
-              ),
-
+              padding: const EdgeInsets.only(top: 16, bottom: 40),
               children: [
                 const WelcomeSlider(),
 
@@ -285,21 +161,43 @@ class _HomeViewState extends State<HomeView> {
                 if (viewModel.status == HomeStatus.loading)
                   const Padding(
                     padding: EdgeInsets.all(40),
-                    child: Center(
-                      child: CircularProgressIndicator(),
-                    ),
+                    child: Center(child: CircularProgressIndicator()),
                   )
                 else if (viewModel.status == HomeStatus.error)
                   _ErrorMessage(
-                    message:
-                        viewModel.errorMessage ??
-                        'Ocurrió un error.',
+                    message: viewModel.errorMessage ?? 'Ocurrió un error.',
                     onRetry: viewModel.loadHome,
                   )
                 else ...[
                   NewsSection(
-                    news: viewModel.news,
+                    news: _showAllNews
+                        ? viewModel.news
+                        : viewModel.news.take(5).toList(),
                   ),
+
+                  if (viewModel.news.length > 5)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _showAllNews = !_showAllNews;
+                            });
+                          },
+                          icon: Icon(
+                            _showAllNews
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.keyboard_arrow_down_rounded,
+                          ),
+                          label: Text(_showAllNews ? 'Ver menos' : 'Ver más'),
+                        ),
+                      ),
+                    ),
 
                   const SizedBox(height: 28),
 
@@ -311,8 +209,34 @@ class _HomeViewState extends State<HomeView> {
                   const SizedBox(height: 12),
 
                   VideosSection(
-                    videos: viewModel.videos,
+                    videos: _showAllVideos
+                        ? viewModel.videos
+                        : viewModel.videos.take(5).toList(),
                   ),
+
+                  if (viewModel.videos.length > 5)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _showAllVideos = !_showAllVideos;
+                            });
+                          },
+                          icon: Icon(
+                            _showAllVideos
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.keyboard_arrow_down_rounded,
+                          ),
+                          label: Text(_showAllVideos ? 'Ver menos' : 'Ver más'),
+                        ),
+                      ),
+                    ),
                 ],
               ],
             ),
@@ -327,38 +251,22 @@ class _SectionTitle extends StatelessWidget {
   final IconData icon;
   final String title;
 
-  const _SectionTitle({
-    required this.icon,
-    required this.title,
-  });
+  const _SectionTitle({required this.icon, required this.title});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-      ),
-
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: Theme.of(
-              context,
-            ).colorScheme.primary,
-          ),
-
+          Icon(icon, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 8),
-
           Expanded(
             child: Text(
               title,
-
               style: Theme.of(
                 context,
-              ).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -371,44 +279,24 @@ class _ErrorMessage extends StatelessWidget {
   final String message;
   final Future<void> Function() onRetry;
 
-  const _ErrorMessage({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorMessage({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24),
-
       child: Column(
         children: [
-          const Icon(
-            Icons.error_outline,
-            size: 45,
-          ),
-
+          const Icon(Icons.error_outline, size: 45),
           const SizedBox(height: 12),
-
-          Text(
-            message,
-            textAlign: TextAlign.center,
-          ),
-
+          Text(message, textAlign: TextAlign.center),
           const SizedBox(height: 16),
-
           FilledButton.icon(
             onPressed: () {
               onRetry();
             },
-
-            icon: const Icon(
-              Icons.refresh,
-            ),
-
-            label: const Text(
-              'Intentar nuevamente',
-            ),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Intentar nuevamente'),
           ),
         ],
       ),
