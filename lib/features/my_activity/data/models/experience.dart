@@ -21,16 +21,35 @@ class Experience {
       context: 'Una experiencia',
     );
 
+    final String? rawTitle = (map['title'] as String?) ??
+        (map['name'] as String?) ??
+        (map['jobTitle'] as String?) ??
+        (map['position'] as String?);
+
+    final String? rawDescription = (map['description'] as String?) ??
+        (map['summary'] as String?) ??
+        (map['details'] as String?) ??
+        '';
+
+    final String? imageUrl = (map['certificateImage'] as String?) ??
+        (map['certificate'] as String?) ??
+        (map['certificateUrl'] as String?) ??
+        (map['image'] as String?) ??
+        (map['imageUrl'] as String?) ??
+        (map['photo'] as String?) ??
+        (map['photoUrl'] as String?);
+
+    final String titleValue = rawTitle?.trim() ?? '';
+    final String? imageValue = imageUrl?.trim();
+    final String safeTitle = titleValue.isNotEmpty ? titleValue : 'Experiencia profesional';
+    final String? safeImage = imageValue != null && imageValue.isNotEmpty ? imageValue : null;
+
     return Experience(
-      id: requireString(map, 'id', context: 'Una experiencia'),
-      title: requireString(map, 'title', context: 'Una experiencia'),
-      description: requireString(
-        map,
-        'description',
-        context: 'Una experiencia',
-      ),
+      id: (map['id'] as String?)?.trim() ?? 'experience-${DateTime.now().microsecondsSinceEpoch}',
+      title: safeTitle,
+      description: rawDescription?.trim() ?? '',
       jobTypeKey: (map['jobTypeKey'] as String?)?.trim(),
-      certificateImage: (map['certificateImage'] as String?)?.trim(),
+      certificateImage: safeImage,
     );
   }
 }

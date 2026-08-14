@@ -119,7 +119,7 @@ class Application {
       }
     }
 
-    final Object? rawRating = map['rating'];
+    final Object? rawRating = map['rating'] ?? map['score'];
     final int? ratingVal = rawRating is num ? rawRating.toInt() : null;
 
     final Object? rawCreatedAt = map['createdAt'] ?? map['date'];
@@ -135,7 +135,9 @@ class Application {
             : null;
 
     final Object? rawExperiences = map['experiences'] ??
-        (userMap != null ? userMap['experiences'] : null);
+        map['experience'] ??
+        (userMap != null ? userMap['experiences'] : null) ??
+        (userMap != null ? userMap['experience'] : null);
     final List<Experience> parsedExperiences = rawExperiences is List
         ? rawExperiences.map((Object? entry) {
             if (entry is Map<String, dynamic>) {
@@ -148,10 +150,15 @@ class Application {
           }).toList()
         : const <Experience>[];
 
+    final String applicationStatus = (map['status'] as String?) ??
+        (map['applicationStatus'] as String?) ??
+        (map['state'] as String?) ??
+        'applied';
+
     return Application(
       id: requireString(map, 'id', context: 'Una aplicación'),
-      status: requireString(map, 'status', context: 'Una aplicación'),
-      comment: (map['comment'] as String?)?.trim(),
+      status: applicationStatus.trim().isNotEmpty ? applicationStatus.trim() : 'applied',
+      comment: (map['comment'] as String?)?.trim() ?? (map['message'] as String?)?.trim(),
       rating: ratingVal,
       createdAt: createdDate,
       offerId: (map['offerId'] as String?)?.trim() ?? offerObj?.id,
@@ -162,8 +169,8 @@ class Application {
       offerPhotoUrl: (map['photo'] as String?) ?? (map['photoUrl'] as String?) ?? (map['offerPhoto'] as String?) ?? offerObj?.photoUrl,
       offerAddress: (map['address'] as String?) ?? (map['offerAddress'] as String?) ?? offerObj?.address,
       offer: offerObj,
-      applicantFirstName: (userMap?['firstName'] as String?)?.trim(),
-      applicantLastName: (userMap?['lastName'] as String?)?.trim(),
+      applicantFirstName: (userMap?['firstName'] as String?)?.trim() ?? (userMap?['name'] as String?)?.trim(),
+      applicantLastName: (userMap?['lastName'] as String?)?.trim() ?? (userMap?['surname'] as String?)?.trim(),
       applicantExperiences: parsedExperiences,
     );
   }

@@ -346,6 +346,11 @@ class _OfferContent extends StatelessWidget {
                   applicationId: applicant.id,
                   status: 'discarded',
                 ),
+                onRate: (int rating) => viewModel.updateApplicantStatus(
+                  applicationId: applicant.id,
+                  status: applicant.status,
+                  rating: rating,
+                ),
               );
             }),
 
@@ -412,6 +417,7 @@ class _ApplicantCard extends StatelessWidget {
     required this.onSelectFinalist,
     required this.onSelectWinner,
     required this.onDiscard,
+    required this.onRate,
   });
 
   final Application applicant;
@@ -419,6 +425,7 @@ class _ApplicantCard extends StatelessWidget {
   final VoidCallback onSelectFinalist;
   final VoidCallback onSelectWinner;
   final VoidCallback onDiscard;
+  final ValueChanged<int> onRate;
 
   Future<void> _openCertificateDialog(
     BuildContext context,
@@ -541,26 +548,77 @@ class _ApplicantCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: applicant.applicantExperiences
-                  .where((experience) => experience.title.trim().isNotEmpty)
-                  .map((experience) {
-                    return ActionChip(
-                      avatar: const Icon(
-                        Icons.badge_outlined,
-                        size: 18,
-                      ),
-                      label: Text(experience.title),
-                      onPressed: (experience.certificateImage?.trim().isNotEmpty ?? false)
+            ...applicant.applicantExperiences
+                .where((experience) => experience.title.trim().isNotEmpty)
+                .map((experience) {
+                  return Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: (experience.certificateImage?.trim().isNotEmpty ?? false)
                           ? () => _openCertificateDialog(context, experience)
                           : null,
-                    );
-                  })
-                  .toList(),
-            ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.badge_outlined, size: 16),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  experience.title,
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if ((experience.description).trim().isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              experience.description,
+                              style: TextStyle(color: Colors.grey.shade700),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }),
           ],
+          const SizedBox(height: 12),
+          Text(
+            'Calificación',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: List.generate(5, (int index) {
+              final int starValue = index + 1;
+              final bool isFilled = (applicant.rating ?? 0) >= starValue;
+              return IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                onPressed: isUpdating ? null : () => onRate(starValue),
+                icon: Icon(
+                  isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: Colors.amber,
+                  size: 20,
+                ),
+              );
+            }),
+          ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,

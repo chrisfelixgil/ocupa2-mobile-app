@@ -44,13 +44,33 @@ class Contract {
   final List<ContractComment> comments;
   final List<ContractPhoto> photos;
 
-  bool get isContratante => myRole.toLowerCase().trim() == 'contratante';
-  bool get isContratado => myRole.toLowerCase().trim() == 'contratado';
+  static String normalizeStatus(String? rawStatus) {
+    final String status = rawStatus?.trim().toLowerCase() ?? '';
+    return switch (status) {
+      'accepted' || 'approved' || 'active' || 'confirmed' || 'in_progress' || 'in-progress' => 'active',
+      'pending' || 'waiting' || 'review' || 'awaiting' => 'pending',
+      'rejected' || 'declined' || 'denied' => 'rejected',
+      'cancelled' || 'canceled' || 'cancelado' => 'cancelled',
+      _ => status,
+    };
+  }
 
-  bool get isPending => status.toLowerCase().trim() == 'pending';
-  bool get isActive => status.toLowerCase().trim() == 'active';
-  bool get isRejected => status.toLowerCase().trim() == 'rejected';
-  bool get isCancelled => status.toLowerCase().trim() == 'cancelled';
+  static String normalizeRole(String? rawRole) {
+    final String role = rawRole?.trim().toLowerCase() ?? '';
+    return switch (role) {
+      'contratante' || 'employer' || 'owner' || 'hiring' || 'contractor' => 'contratante',
+      'contratado' || 'employee' || 'candidate' || 'worker' || 'contractee' => 'contratado',
+      _ => role,
+    };
+  }
+
+  bool get isContratante => normalizeRole(myRole) == 'contratante';
+  bool get isContratado => normalizeRole(myRole) == 'contratado';
+
+  bool get isPending => normalizeStatus(status) == 'pending';
+  bool get isActive => normalizeStatus(status) == 'active';
+  bool get isRejected => normalizeStatus(status) == 'rejected';
+  bool get isCancelled => normalizeStatus(status) == 'cancelled';
 
   bool get hasTerms => salary != null || startDate != null || (duration != null && duration!.trim().isNotEmpty);
 
@@ -61,7 +81,7 @@ class Contract {
       : 'Contrato de trabajo';
 
   String get displayStatusLabel {
-    return switch (status.toLowerCase().trim()) {
+    return switch (normalizeStatus(status)) {
       'pending' => 'Pendiente',
       'active' => 'Activo',
       'rejected' => 'Rechazado',
@@ -111,22 +131,32 @@ class Contract {
     final List<dynamic>? rawComments = map['comments'] as List<dynamic>?;
     final List<dynamic>? rawPhotos = map['photos'] as List<dynamic>?;
 
+    final String contractStatus = normalizeStatus(
+      (map['status'] as String?) ?? (map['contractStatus'] as String?) ?? (map['state'] as String?),
+    );
+
     return Contract(
       id: requireString(map, 'id', context: 'Un contrato'),
-      myRole: (map['myRole'] as String?)?.trim() ?? 'contratante',
-      status: requireString(map, 'status', context: 'Un contrato'),
+      myRole: normalizeRole(
+            (map['myRole'] as String?) ??
+                (map['role'] as String?) ??
+                (map['userRole'] as String?) ??
+                (map['contractRole'] as String?) ??
+                'contratante',
+          ),
+      status: contractStatus.isEmpty ? 'pending' : contractStatus,
       offerId: (map['offerId'] as String?)?.trim(),
       jobTypeName: (map['jobTypeName'] as String?)?.trim() ?? (map['title'] as String?)?.trim(),
-      contratante: parseParty(map['contratante']),
-      contratado: parseParty(map['contratado']),
+      contratante: parseParty(map['contratante'] ?? map['employer'] ?? map['contractor']),
+      contratado: parseParty(map['contratado'] ?? map['employee'] ?? map['worker'] ?? map['candidate']),
       salary: salaryVal,
       currency: (map['currency'] as String?)?.trim() ?? 'DOP',
       startDate: start,
       duration: (map['duration'] as String?)?.trim(),
       createdAt: created,
       acceptedAt: accepted,
-      cancelJustification: (map['cancelJustification'] as String?)?.trim(),
-      cancelledBy: parseParty(map['cancelledBy']),
+      cancelJustification: (map['cancelJustification'] as String?)?.trim() ?? (map['justification'] as String?)?.trim(),
+      cancelledBy: parseParty(map['cancelledBy'] ?? map['canceledBy']),
       cancelledAt: cancelled,
       comments: rawComments?.map(ContractComment.fromJson).toList() ?? const <ContractComment>[],
       photos: rawPhotos?.map(ContractPhoto.fromJson).toList() ?? const <ContractPhoto>[],
