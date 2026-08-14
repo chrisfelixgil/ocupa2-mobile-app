@@ -27,10 +27,12 @@ class _ContractDetailViewState extends State<ContractDetailView> {
 
   @override
   Widget build(BuildContext context) {
-    final ContractDetailViewModel viewModel = context.watch<ContractDetailViewModel>();
+    final ContractDetailViewModel viewModel = context
+        .watch<ContractDetailViewModel>();
 
     Widget body;
-    if (viewModel.status == ContractsStatus.loading || viewModel.status == ContractsStatus.idle) {
+    if (viewModel.status == ContractsStatus.loading ||
+        viewModel.status == ContractsStatus.idle) {
       body = const Center(child: CircularProgressIndicator());
     } else if (viewModel.status == ContractsStatus.error) {
       body = _ErrorState(
@@ -52,7 +54,10 @@ class _ContractDetailViewState extends State<ContractDetailView> {
     );
   }
 
-  Widget _buildContent(BuildContext context, ContractDetailViewModel viewModel) {
+  Widget _buildContent(
+    BuildContext context,
+    ContractDetailViewModel viewModel,
+  ) {
     final Contract? contract = viewModel.contract;
     if (contract == null) {
       return const Center(child: Text('No se encontró el contrato.'));
@@ -74,17 +79,33 @@ class _ContractDetailViewState extends State<ContractDetailView> {
               ),
             _InfoRow(label: 'Estado', value: contract.displayStatusLabel),
             if (contract.salary != null)
-              _InfoRow(label: 'Salario', value: "${contract.currency ?? 'DOP'} ${contract.salary}"),
+              _InfoRow(
+                label: 'Salario',
+                value: "${contract.currency ?? 'DOP'} ${contract.salary}",
+              ),
             if (contract.startDate != null)
-              _InfoRow(label: 'Inicio', value: _formatDate(contract.startDate!)),
+              _InfoRow(
+                label: 'Inicio',
+                value: _formatDate(contract.startDate!),
+              ),
             if (contract.duration != null && contract.duration!.isNotEmpty)
               _InfoRow(label: 'Duración', value: contract.duration!),
             if (contract.acceptedAt != null)
-              _InfoRow(label: 'Aceptado el', value: _formatDate(contract.acceptedAt!)),
+              _InfoRow(
+                label: 'Aceptado el',
+                value: _formatDate(contract.acceptedAt!),
+              ),
             if (contract.cancelledAt != null)
-              _InfoRow(label: 'Cancelado el', value: _formatDate(contract.cancelledAt!)),
-            if (contract.cancelJustification != null && contract.cancelJustification!.isNotEmpty)
-              _InfoRow(label: 'Justificación', value: contract.cancelJustification!),
+              _InfoRow(
+                label: 'Cancelado el',
+                value: _formatDate(contract.cancelledAt!),
+              ),
+            if (contract.cancelJustification != null &&
+                contract.cancelJustification!.isNotEmpty)
+              _InfoRow(
+                label: 'Justificación',
+                value: contract.cancelJustification!,
+              ),
           ],
         ),
         const SizedBox(height: AppSpacing.md),
@@ -104,9 +125,13 @@ class _ContractDetailViewState extends State<ContractDetailView> {
                 ? null
                 : () async {
                     final bool accepted = await viewModel.acceptContract();
-                    if (!mounted) return;
+                    if (!context.mounted) return;
                     if (!accepted) {
-                      _showMessage(context, viewModel.errorMessage ?? 'No fue posible aceptar el contrato.');
+                      _showMessage(
+                        context,
+                        viewModel.errorMessage ??
+                            'No fue posible aceptar el contrato.',
+                      );
                     }
                   },
             secondLabel: 'Rechazar',
@@ -116,25 +141,35 @@ class _ContractDetailViewState extends State<ContractDetailView> {
                 ? null
                 : () async {
                     final bool rejected = await viewModel.rejectContract();
-                    if (!mounted) return;
+                    if (!context.mounted) return;
                     if (!rejected) {
-                      _showMessage(context, viewModel.errorMessage ?? 'No fue posible rechazar el contrato.');
+                      _showMessage(
+                        context,
+                        viewModel.errorMessage ??
+                            'No fue posible rechazar el contrato.',
+                      );
                     }
                   },
           ),
-        if (contract.isActive) ...<Widget>[ 
+        if (contract.isActive) ...<Widget>[
           const SizedBox(height: AppSpacing.md),
           _CommentsSection(
             comments: contract.comments,
             controller: _commentController,
             isSaving: viewModel.isSaving,
             onSend: () async {
-              final bool success = await viewModel.addComment(_commentController.text);
-              if (!mounted) return;
+              final bool success = await viewModel.addComment(
+                _commentController.text,
+              );
+              if (!context.mounted) return;
               if (success) {
                 _commentController.clear();
               } else {
-                _showMessage(context, viewModel.errorMessage ?? 'No fue posible agregar el comentario.');
+                _showMessage(
+                  context,
+                  viewModel.errorMessage ??
+                      'No fue posible agregar el comentario.',
+                );
               }
             },
           ),
@@ -148,7 +183,9 @@ class _ContractDetailViewState extends State<ContractDetailView> {
           _PrimaryActionCard(
             label: 'Cancelar contrato',
             icon: Icons.cancel_rounded,
-            onPressed: viewModel.isSaving ? null : () => _showCancelDialog(context, viewModel),
+            onPressed: viewModel.isSaving
+                ? null
+                : () => _showCancelDialog(context, viewModel),
             isLoading: viewModel.isSaving,
             color: AppColors.error,
           ),
@@ -165,11 +202,15 @@ class _ContractDetailViewState extends State<ContractDetailView> {
     final TextEditingController salaryController = TextEditingController(
       text: contract.salary != null ? contract.salary!.toString() : '',
     );
-    final TextEditingController currencyController = TextEditingController(text: contract.currency ?? 'DOP');
+    final TextEditingController currencyController = TextEditingController(
+      text: contract.currency ?? 'DOP',
+    );
     final TextEditingController startDateController = TextEditingController(
       text: contract.startDate != null ? _formatDate(contract.startDate!) : '',
     );
-    final TextEditingController durationController = TextEditingController(text: contract.duration ?? '');
+    final TextEditingController durationController = TextEditingController(
+      text: contract.duration ?? '',
+    );
 
     await showModalBottomSheet<void>(
       context: context,
@@ -185,7 +226,10 @@ class _ContractDetailViewState extends State<ContractDetailView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              const Text('Fijar términos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Fijar términos',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: AppSpacing.md),
               TextField(
                 controller: salaryController,
@@ -212,9 +256,14 @@ class _ContractDetailViewState extends State<ContractDetailView> {
                 onPressed: viewModel.isSaving
                     ? null
                     : () async {
-                        final num? salary = num.tryParse(salaryController.text.trim());
+                        final num? salary = num.tryParse(
+                          salaryController.text.trim(),
+                        );
                         if (salary == null) {
-                          _showMessage(bottomSheetContext, 'Ingresa un salario válido.');
+                          _showMessage(
+                            bottomSheetContext,
+                            'Ingresa un salario válido.',
+                          );
                           return;
                         }
 
@@ -227,11 +276,15 @@ class _ContractDetailViewState extends State<ContractDetailView> {
                           duration: durationController.text.trim(),
                         );
 
-                        if (!mounted) return;
+                        if (!bottomSheetContext.mounted) return;
                         if (saved) {
                           Navigator.pop(bottomSheetContext);
                         } else {
-                          _showMessage(bottomSheetContext, viewModel.errorMessage ?? 'No fue posible fijar los términos.');
+                          _showMessage(
+                            bottomSheetContext,
+                            viewModel.errorMessage ??
+                                'No fue posible fijar los términos.',
+                          );
                         }
                       },
                 child: const Text('Guardar términos'),
@@ -248,8 +301,14 @@ class _ContractDetailViewState extends State<ContractDetailView> {
     BuildContext context,
     ContractDetailViewModel viewModel,
   ) async {
-    final XFile? file = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final XFile? file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+    );
     if (file == null) {
+      return;
+    }
+
+    if (!context.mounted) {
       return;
     }
 
@@ -286,9 +345,12 @@ class _ContractDetailViewState extends State<ContractDetailView> {
       description: descriptionController.text.trim(),
     );
 
-    if (!mounted) return;
+    if (!context.mounted) return;
     if (!uploaded) {
-      _showMessage(context, viewModel.errorMessage ?? 'No fue posible subir la foto.');
+      _showMessage(
+        context,
+        viewModel.errorMessage ?? 'No fue posible subir la foto.',
+      );
     }
   }
 
@@ -296,7 +358,8 @@ class _ContractDetailViewState extends State<ContractDetailView> {
     BuildContext context,
     ContractDetailViewModel viewModel,
   ) async {
-    final TextEditingController justificationController = TextEditingController();
+    final TextEditingController justificationController =
+        TextEditingController();
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -325,15 +388,22 @@ class _ContractDetailViewState extends State<ContractDetailView> {
       return;
     }
 
-    final bool cancelled = await viewModel.cancelContract(justificationController.text.trim());
-    if (!mounted) return;
+    final bool cancelled = await viewModel.cancelContract(
+      justificationController.text.trim(),
+    );
+    if (!context.mounted) return;
     if (!cancelled) {
-      _showMessage(context, viewModel.errorMessage ?? 'No fue posible cancelar el contrato.');
+      _showMessage(
+        context,
+        viewModel.errorMessage ?? 'No fue posible cancelar el contrato.',
+      );
     }
   }
 
   void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _formatDate(DateTime date) {
@@ -363,7 +433,10 @@ class _ContractHeader extends StatelessWidget {
               children: <Widget>[
                 _RoleBadge(isContratante: contract.isContratante),
                 const SizedBox(width: AppSpacing.sm),
-                _StatusBadge(label: contract.displayStatusLabel, status: contract.status),
+                _StatusBadge(
+                  label: contract.displayStatusLabel,
+                  status: contract.status,
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
@@ -385,7 +458,10 @@ class _RoleBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color color = isContratante ? AppColors.navy : AppColors.terracotta;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
@@ -406,17 +482,37 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (Color background, Color foreground, IconData icon) =
-        switch (status.toLowerCase().trim()) {
-      'active' => (AppColors.successSurface, AppColors.success, Icons.check_circle_outline_rounded),
-      'pending' => (const Color(0xFFFFF8E1), const Color(0xFFF57F17), Icons.schedule_rounded),
-      'rejected' => (AppColors.errorSurface, AppColors.error, Icons.cancel_outlined),
-      'cancelled' => (AppColors.errorSurface, AppColors.error, Icons.cancel_outlined),
+    final (Color background, Color foreground, IconData icon) = switch (status
+        .toLowerCase()
+        .trim()) {
+      'active' => (
+        AppColors.successSurface,
+        AppColors.success,
+        Icons.check_circle_outline_rounded,
+      ),
+      'pending' => (
+        const Color(0xFFFFF8E1),
+        const Color(0xFFF57F17),
+        Icons.schedule_rounded,
+      ),
+      'rejected' => (
+        AppColors.errorSurface,
+        AppColors.error,
+        Icons.cancel_outlined,
+      ),
+      'cancelled' => (
+        AppColors.errorSurface,
+        AppColors.error,
+        Icons.cancel_outlined,
+      ),
       _ => (const Color(0xFFEEEEEE), Colors.grey, Icons.info_outline),
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(12),
@@ -426,7 +522,10 @@ class _StatusBadge extends StatelessWidget {
         children: <Widget>[
           Icon(icon, size: 14, color: foreground),
           const SizedBox(width: AppSpacing.xs),
-          Text(label, style: TextStyle(color: foreground, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(color: foreground, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );
@@ -472,12 +571,12 @@ class _InfoRow extends StatelessWidget {
         children: <Widget>[
           Expanded(
             flex: 3,
-            child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
-          Expanded(
-            flex: 5,
-            child: Text(value),
-          ),
+          Expanded(flex: 5, child: Text(value)),
         ],
       ),
     );
@@ -506,14 +605,22 @@ class _PrimaryActionCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
           children: <Widget>[
-            Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600))),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
             FilledButton.icon(
               onPressed: onPressed,
-              icon: isLoading ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(icon),
+              icon: isLoading
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(icon),
               label: Text(label),
-              style: FilledButton.styleFrom(
-                backgroundColor: color,
-              ),
+              style: FilledButton.styleFrom(backgroundColor: color),
             ),
           ],
         ),
@@ -590,10 +697,12 @@ class _CommentsSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Text('Comentarios', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const Text(
+              'Comentarios',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: AppSpacing.sm),
-            if (comments.isEmpty)
-              const Text('Aún no hay comentarios.'),
+            if (comments.isEmpty) const Text('Aún no hay comentarios.'),
             if (comments.isNotEmpty)
               ...comments.map((ContractComment comment) {
                 return Padding(
@@ -603,10 +712,19 @@ class _CommentsSection extends StatelessWidget {
                     children: <Widget>[
                       Row(
                         children: <Widget>[
-                          Text(comment.by?.nombre ?? 'Anónimo', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            comment.by?.nombre ?? 'Anónimo',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           const SizedBox(width: AppSpacing.xs),
                           if (comment.createdAt != null)
-                            Text('· ${comment.createdAt!.day}/${comment.createdAt!.month}/${comment.createdAt!.year}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text(
+                              '· ${comment.createdAt!.day}/${comment.createdAt!.month}/${comment.createdAt!.year}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.xs),
@@ -659,7 +777,10 @@ class _PhotosSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Text('Fotos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const Text(
+              'Fotos',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: AppSpacing.sm),
             if (photos.isEmpty) const Text('No hay fotos agregadas aún.'),
             if (photos.isNotEmpty)
@@ -676,7 +797,10 @@ class _PhotosSection extends StatelessWidget {
                         if (photo.by != null || photo.createdAt != null)
                           Text(
                             '${photo.by?.nombre ?? 'Usuario'}${photo.createdAt != null ? ' · ${photo.createdAt!.day}/${photo.createdAt!.month}/${photo.createdAt!.year}' : ''}',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                           ),
                       ],
                     ),
@@ -710,7 +834,11 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.error),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 48,
+              color: AppColors.error,
+            ),
             const SizedBox(height: AppSpacing.md),
             Text(message ?? 'No fue posible cargar el contrato.'),
             const SizedBox(height: AppSpacing.md),

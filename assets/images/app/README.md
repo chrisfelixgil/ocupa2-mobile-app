@@ -1,3 +1,4 @@
-﻿# Recursos de Ocupa2 - Carpeta: app
+﻿# Recursos de Ocupa2 - Carpeta: icons
 
-Imagenes generales de la aplicacion (logos, fondos por defecto).
+Coloca aqui los vectores o imagenes de iconos (.png / .svg).
+Nota: El icono oficial de la app debe llevar los avatares del equipo.

@@ -9,8 +9,8 @@ import 'package:ocupa2/features/uploads/data/services/upload_service.dart';
 class ExperiencesViewModel extends ChangeNotifier {
   ExperiencesViewModel({
     required this._experienceRepository,
-    required UploadService uploadService,
-  })  : _uploadService = uploadService;
+    required this._uploadService,
+  });
 
   final ExperienceRepository _experienceRepository;
   final UploadService _uploadService;
@@ -57,11 +57,12 @@ class ExperiencesViewModel extends ChangeNotifier {
           filename: certificate.name,
         );
       }
-      final Experience experience = await _experienceRepository.createExperience(
-        title: title,
-        description: description,
-        certificateImage: certificateImage,
-      );
+      final Experience experience = await _experienceRepository
+          .createExperience(
+            title: title,
+            description: description,
+            certificateImage: certificateImage,
+          );
       _experiences = <Experience>[experience, ..._experiences];
       _isSaving = false;
       notifyListeners();
