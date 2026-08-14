@@ -63,4 +63,22 @@ class MyOffersViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // NEW: Delete offer permanently
+  Future<bool> delete(String offerId) async {
+    _deactivatingIds.add(offerId);
+    notifyListeners();
+    try {
+      await _jobPostingRepository.deleteOffer(offerId);
+      _offers.removeWhere((o) => o.id == offerId);
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _deactivatingIds.remove(offerId);
+      notifyListeners();
+    }
+  }
 }

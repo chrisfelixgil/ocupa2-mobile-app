@@ -24,14 +24,12 @@ class _MyOffersViewState extends State<MyOffersView> {
     });
   }
 
-  Future<void> _confirmDeactivate(String offerId) async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _confirmDelete(String offerId) async {
+    final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Desactivar oferta'),
-        content: const Text(
-          '¿Seguro que deseas desactivar esta oferta?',
-        ),
+        title: const Text('Eliminar oferta'),
+        content: const Text('¿Seguro que deseas eliminar esta oferta?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -39,14 +37,26 @@ class _MyOffersViewState extends State<MyOffersView> {
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Desactivar'),
+            child: const Text('Eliminar'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true && mounted) {
-      context.read<MyOffersViewModel>().deactivate(offerId);
+    if (confirmed != true || !mounted) return;
+
+    final bool success = await context.read<MyOffersViewModel>().delete(offerId);
+    if (!mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Oferta eliminada')),
+      );
+    } else {
+      final String? message = context.read<MyOffersViewModel>().errorMessage;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message ?? 'No fue posible eliminar la oferta')),
+      );
     }
   }
 
@@ -126,8 +136,7 @@ class _MyOffersViewState extends State<MyOffersView> {
                           },
                         );
                       },
-                      onDeactivate: () =>
-                          _confirmDeactivate(offer.id),
+                      onDeactivate: () => _confirmDelete(offer.id),
                     );
                   },
                 );

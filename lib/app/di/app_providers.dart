@@ -35,14 +35,17 @@ import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offer
 import 'package:ocupa2/features/my_activity/data/repositories/application_repository.dart';
 import 'package:ocupa2/features/my_activity/data/repositories/contract_repository.dart';
 import 'package:ocupa2/features/my_activity/data/repositories/experience_repository.dart';
+import 'package:ocupa2/features/my_activity/data/repositories/offer_repository.dart';
 
 import 'package:ocupa2/features/my_activity/data/services/application_service.dart';
 import 'package:ocupa2/features/my_activity/data/services/contract_service.dart';
 import 'package:ocupa2/features/my_activity/data/services/experience_service.dart';
+import 'package:ocupa2/features/my_activity/data/services/offer_service.dart';
 
 import 'package:ocupa2/features/my_activity/presentation/viewmodels/applications_view_model.dart';
 import 'package:ocupa2/features/my_activity/presentation/viewmodels/contracts_view_model.dart';
 import 'package:ocupa2/features/my_activity/presentation/viewmodels/experiences_view_model.dart';
+import 'package:ocupa2/features/my_activity/presentation/viewmodels/my_offers_view_model.dart';
 
 // UPLOAD SERVICE PARA EXPERIENCIAS
 import 'package:ocupa2/features/uploads/data/services/upload_service.dart'
@@ -175,15 +178,6 @@ class AppProviders extends StatelessWidget {
           },
         ),
 
-        ChangeNotifierProvider<ExploreOffersViewModel>(
-          create: (BuildContext context) {
-            return ExploreOffersViewModel(
-              jobSearchRepository:
-                  context.read<JobSearchRepository>(),
-            );
-          },
-        ),
-
         // EXPERIENCES
         Provider<ExperienceService>(
           create: (BuildContext context) {
@@ -244,6 +238,44 @@ class AppProviders extends StatelessWidget {
             return ApplicationsViewModel(
               applicationRepository:
                   context.read<ApplicationRepository>(),
+            );
+          },
+        ),
+
+        // MY OFFERS
+        Provider<OfferService>(
+          create: (BuildContext context) {
+            return OfferServiceImpl(
+              apiClient: context.read<ApiClient>(),
+            );
+          },
+        ),
+
+        Provider<OfferRepository>(
+          create: (BuildContext context) {
+            return OfferRepository(
+              offerService: context.read<OfferService>(),
+            );
+          },
+        ),
+
+        ChangeNotifierProvider<MyOffersViewModel>(
+          create: (BuildContext context) {
+            return MyOffersViewModel(
+              offerRepository: context.read<OfferRepository>(),
+            );
+          },
+        ),
+
+        ChangeNotifierProvider<ExploreOffersViewModel>(
+          create: (BuildContext context) {
+            return ExploreOffersViewModel(
+              jobSearchRepository:
+                  context.read<JobSearchRepository>(),
+              applicationRepository:
+                  context.read<ApplicationRepository>(),
+              jobPostingRepository:
+                  context.read<JobPostingRepository>(),
             );
           },
         ),

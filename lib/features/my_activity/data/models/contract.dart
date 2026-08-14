@@ -44,23 +44,23 @@ class Contract {
   final List<ContractComment> comments;
   final List<ContractPhoto> photos;
 
-  static String normalizeStatus(String? rawStatus) {
-    final String status = rawStatus?.trim().toLowerCase() ?? '';
-    return switch (status) {
-      'accepted' || 'approved' || 'active' || 'confirmed' || 'in_progress' || 'in-progress' => 'active',
-      'pending' || 'waiting' || 'review' || 'awaiting' => 'pending',
-      'rejected' || 'declined' || 'denied' => 'rejected',
-      'cancelled' || 'canceled' || 'cancelado' => 'cancelled',
-      _ => status,
-    };
-  }
-
   static String normalizeRole(String? rawRole) {
     final String role = rawRole?.trim().toLowerCase() ?? '';
     return switch (role) {
-      'contratante' || 'employer' || 'owner' || 'hiring' || 'contractor' => 'contratante',
-      'contratado' || 'employee' || 'candidate' || 'worker' || 'contractee' => 'contratado',
+      'contratante' || 'employer' || 'owner' || 'hiring' || 'contractor' || 'empleador' => 'contratante',
+      'contratado' || 'employee' || 'candidate' || 'worker' || 'contractee' || 'empleado' => 'contratado',
       _ => role,
+    };
+  }
+
+  static String normalizeStatus(String? rawStatus) {
+    final String status = rawStatus?.trim().toLowerCase() ?? '';
+    return switch (status) {
+      'accepted' || 'approved' || 'active' || 'confirmed' || 'in_progress' || 'in-progress' || 'aceptado' => 'active',
+      'pending' || 'waiting' || 'review' || 'awaiting' || 'pendiente' => 'pending',
+      'rejected' || 'declined' || 'denied' || 'rechazado' => 'rejected',
+      'cancelled' || 'canceled' || 'cancelado' => 'cancelled',
+      _ => status,
     };
   }
 
@@ -96,6 +96,13 @@ class Contract {
       context: 'Un contrato',
     );
 
+    String? asText(Object? value) {
+      if (value == null) return null;
+      if (value is String) return value.trim();
+      if (value is num || value is bool) return value.toString().trim();
+      return value.toString().trim();
+    }
+
     ContractParty? parseParty(Object? raw) {
       if (raw == null) return null;
       try {
@@ -106,60 +113,48 @@ class Contract {
     }
 
     final Object? rawSalary = map['salary'];
-    final num? salaryVal = rawSalary is num ? rawSalary : null;
+    final num? salaryVal = rawSalary is num ? rawSalary : num.tryParse(asText(rawSalary) ?? '');
 
-    final Object? rawStartDate = map['startDate'];
-    final DateTime? start = rawStartDate is String
-        ? DateTime.tryParse(rawStartDate.trim())
-        : null;
+    final DateTime? start = DateTime.tryParse(asText(map['startDate']) ?? '');
+    final DateTime? created = DateTime.tryParse(asText(map['createdAt']) ?? '');
+    final DateTime? accepted = DateTime.tryParse(asText(map['acceptedAt']) ?? '');
+    final DateTime? cancelled = DateTime.tryParse(asText(map['cancelledAt']) ?? '');
 
-    final Object? rawCreatedAt = map['createdAt'];
-    final DateTime? created = rawCreatedAt is String
-        ? DateTime.tryParse(rawCreatedAt.trim())
-        : null;
+    final List<dynamic>? rawComments = map['comments'] is List ? map['comments'] as List<dynamic> : null;
+    final List<dynamic>? rawPhotos = map['photos'] is List ? map['photos'] as List<dynamic> : null;
 
-    final Object? rawAcceptedAt = map['acceptedAt'];
-    final DateTime? accepted = rawAcceptedAt is String
-        ? DateTime.tryParse(rawAcceptedAt.trim())
-        : null;
-
-    final Object? rawCancelledAt = map['cancelledAt'];
-    final DateTime? cancelled = rawCancelledAt is String
-        ? DateTime.tryParse(rawCancelledAt.trim())
-        : null;
-
-    final List<dynamic>? rawComments = map['comments'] as List<dynamic>?;
-    final List<dynamic>? rawPhotos = map['photos'] as List<dynamic>?;
-
-    final String contractStatus = normalizeStatus(
-      (map['status'] as String?) ?? (map['contractStatus'] as String?) ?? (map['state'] as String?),
+    final String resolvedStatus = normalizeStatus(
+      asText(map['status']) ??
+          asText(map['contractStatus']) ??
+          asText(map['state']) ??
+          'pending',
     );
 
     return Contract(
-      id: requireString(map, 'id', context: 'Un contrato'),
+      id: asText(map['id']) ?? 'unknown-contract',
       myRole: normalizeRole(
-            (map['myRole'] as String?) ??
-                (map['role'] as String?) ??
-                (map['userRole'] as String?) ??
-                (map['contractRole'] as String?) ??
-                'contratante',
-          ),
-      status: contractStatus.isEmpty ? 'pending' : contractStatus,
-      offerId: (map['offerId'] as String?)?.trim(),
-      jobTypeName: (map['jobTypeName'] as String?)?.trim() ?? (map['title'] as String?)?.trim(),
+        asText(map['myRole']) ??
+            asText(map['role']) ??
+            asText(map['userRole']) ??
+            asText(map['contractRole']) ??
+            'contratante',
+      ),
+      status: resolvedStatus,
+      offerId: asText(map['offerId']),
+      jobTypeName: asText(map['jobTypeName']) ?? asText(map['title']),
       contratante: parseParty(map['contratante'] ?? map['employer'] ?? map['contractor']),
       contratado: parseParty(map['contratado'] ?? map['employee'] ?? map['worker'] ?? map['candidate']),
       salary: salaryVal,
-      currency: (map['currency'] as String?)?.trim() ?? 'DOP',
+      currency: asText(map['currency']) ?? 'DOP',
       startDate: start,
-      duration: (map['duration'] as String?)?.trim(),
+      duration: asText(map['duration']),
       createdAt: created,
       acceptedAt: accepted,
-      cancelJustification: (map['cancelJustification'] as String?)?.trim() ?? (map['justification'] as String?)?.trim(),
+      cancelJustification: asText(map['cancelJustification']) ?? asText(map['justification']),
       cancelledBy: parseParty(map['cancelledBy'] ?? map['canceledBy']),
       cancelledAt: cancelled,
-      comments: rawComments?.map(ContractComment.fromJson).toList() ?? const <ContractComment>[],
-      photos: rawPhotos?.map(ContractPhoto.fromJson).toList() ?? const <ContractPhoto>[],
+      comments: rawComments?.map(ContractComment.fromJson).whereType<ContractComment>().toList() ?? const <ContractComment>[],
+      photos: rawPhotos?.map(ContractPhoto.fromJson).whereType<ContractPhoto>().toList() ?? const <ContractPhoto>[],
     );
   }
 }

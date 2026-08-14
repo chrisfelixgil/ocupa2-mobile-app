@@ -18,22 +18,30 @@ class ContractComment {
       context: 'Un comentario de contrato',
     );
 
+    String? asText(Object? value) {
+      if (value == null) return null;
+      if (value is String) return value.trim();
+      if (value is num || value is bool) return value.toString().trim();
+      return value.toString().trim();
+    }
+
     ContractParty? author;
-    if (map['by'] != null) {
+    final Object? rawAuthor = map['by'] ?? map['author'] ?? map['user'];
+    if (rawAuthor != null) {
       try {
-        author = ContractParty.fromJson(map['by']);
+        author = ContractParty.fromJson(rawAuthor);
       } catch (_) {
         author = null;
       }
     }
 
-    final Object? rawCreatedAt = map['createdAt'];
+    final Object? rawCreatedAt = map['createdAt'] ?? map['date'] ?? map['timestamp'];
     final DateTime? date = rawCreatedAt is String
         ? DateTime.tryParse(rawCreatedAt.trim())
         : null;
 
     return ContractComment(
-      body: requireString(map, 'body', context: 'Un comentario de contrato'),
+      body: asText(map['body']) ?? asText(map['message']) ?? 'Comentario',
       by: author,
       createdAt: date,
     );

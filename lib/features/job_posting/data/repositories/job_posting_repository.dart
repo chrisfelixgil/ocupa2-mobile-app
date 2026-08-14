@@ -6,4 +6,5 @@ abstract class JobPostingRepository {
   Future<List<Offer>> getMyOffers();
   Future<Offer> getOfferById(String id);
   Future<void> deactivateOffer(String id);
+  Future<void> deleteOffer(String id);
 }

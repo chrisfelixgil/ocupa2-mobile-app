@@ -52,14 +52,15 @@ class ContractDetailViewModel extends ChangeNotifier {
     required String startDate,
     required String duration,
   }) async {
-    if (_contract == null) return false;
+    final Contract? currentContract = _contract;
+    if (currentContract == null) return false;
     _isSaving = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       _contract = await _contractRepository.setTerms(
-        id: _contract!.id,
+        id: currentContract.id,
         salary: salary,
         currency: currency,
         startDate: startDate,
@@ -80,13 +81,14 @@ class ContractDetailViewModel extends ChangeNotifier {
   }
 
   Future<bool> acceptContract() async {
-    if (_contract == null) return false;
+    final Contract? currentContract = _contract;
+    if (currentContract == null) return false;
     _isSaving = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _contract = await _contractRepository.acceptContract(_contract!.id);
+      _contract = await _contractRepository.acceptContract(currentContract.id);
       _isSaving = false;
       notifyListeners();
       return true;
@@ -102,13 +104,14 @@ class ContractDetailViewModel extends ChangeNotifier {
   }
 
   Future<bool> rejectContract() async {
-    if (_contract == null) return false;
+    final Contract? currentContract = _contract;
+    if (currentContract == null) return false;
     _isSaving = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _contract = await _contractRepository.rejectContract(_contract!.id);
+      _contract = await _contractRepository.rejectContract(currentContract.id);
       _isSaving = false;
       notifyListeners();
       return true;
@@ -124,35 +127,36 @@ class ContractDetailViewModel extends ChangeNotifier {
   }
 
   Future<bool> addComment(String body) async {
-    if (_contract == null || body.trim().isEmpty) return false;
+    final Contract? currentContract = _contract;
+    if (currentContract == null || body.trim().isEmpty) return false;
     _isSaving = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       final ContractComment comment = await _contractRepository.addComment(
-        id: _contract!.id,
+        id: currentContract.id,
         body: body.trim(),
       );
       _contract = Contract(
-        id: _contract!.id,
-        myRole: _contract!.myRole,
-        status: _contract!.status,
-        offerId: _contract!.offerId,
-        jobTypeName: _contract!.jobTypeName,
-        contratante: _contract!.contratante,
-        contratado: _contract!.contratado,
-        salary: _contract!.salary,
-        currency: _contract!.currency,
-        startDate: _contract!.startDate,
-        duration: _contract!.duration,
-        createdAt: _contract!.createdAt,
-        acceptedAt: _contract!.acceptedAt,
-        cancelJustification: _contract!.cancelJustification,
-        cancelledBy: _contract!.cancelledBy,
-        cancelledAt: _contract!.cancelledAt,
-        comments: <ContractComment>[..._contract!.comments, comment],
-        photos: _contract!.photos,
+        id: currentContract.id,
+        myRole: currentContract.myRole,
+        status: currentContract.status,
+        offerId: currentContract.offerId,
+        jobTypeName: currentContract.jobTypeName,
+        contratante: currentContract.contratante,
+        contratado: currentContract.contratado,
+        salary: currentContract.salary,
+        currency: currentContract.currency,
+        startDate: currentContract.startDate,
+        duration: currentContract.duration,
+        createdAt: currentContract.createdAt,
+        acceptedAt: currentContract.acceptedAt,
+        cancelJustification: currentContract.cancelJustification,
+        cancelledBy: currentContract.cancelledBy,
+        cancelledAt: currentContract.cancelledAt,
+        comments: <ContractComment>[...currentContract.comments, comment],
+        photos: currentContract.photos,
       );
       _isSaving = false;
       notifyListeners();
@@ -172,7 +176,8 @@ class ContractDetailViewModel extends ChangeNotifier {
     required XFile photoFile,
     required String description,
   }) async {
-    if (_contract == null) return false;
+    final Contract? currentContract = _contract;
+    if (currentContract == null) return false;
     _isSaving = true;
     _errorMessage = null;
     notifyListeners();
@@ -184,30 +189,30 @@ class ContractDetailViewModel extends ChangeNotifier {
       );
 
       final ContractPhoto photo = await _contractRepository.addPhoto(
-        id: _contract!.id,
+        id: currentContract.id,
         photo: photoUrl,
         description: description,
       );
 
       _contract = Contract(
-        id: _contract!.id,
-        myRole: _contract!.myRole,
-        status: _contract!.status,
-        offerId: _contract!.offerId,
-        jobTypeName: _contract!.jobTypeName,
-        contratante: _contract!.contratante,
-        contratado: _contract!.contratado,
-        salary: _contract!.salary,
-        currency: _contract!.currency,
-        startDate: _contract!.startDate,
-        duration: _contract!.duration,
-        createdAt: _contract!.createdAt,
-        acceptedAt: _contract!.acceptedAt,
-        cancelJustification: _contract!.cancelJustification,
-        cancelledBy: _contract!.cancelledBy,
-        cancelledAt: _contract!.cancelledAt,
-        comments: _contract!.comments,
-        photos: <ContractPhoto>[..._contract!.photos, photo],
+        id: currentContract.id,
+        myRole: currentContract.myRole,
+        status: currentContract.status,
+        offerId: currentContract.offerId,
+        jobTypeName: currentContract.jobTypeName,
+        contratante: currentContract.contratante,
+        contratado: currentContract.contratado,
+        salary: currentContract.salary,
+        currency: currentContract.currency,
+        startDate: currentContract.startDate,
+        duration: currentContract.duration,
+        createdAt: currentContract.createdAt,
+        acceptedAt: currentContract.acceptedAt,
+        cancelJustification: currentContract.cancelJustification,
+        cancelledBy: currentContract.cancelledBy,
+        cancelledAt: currentContract.cancelledAt,
+        comments: currentContract.comments,
+        photos: <ContractPhoto>[...currentContract.photos, photo],
       );
       _isSaving = false;
       notifyListeners();
@@ -224,14 +229,15 @@ class ContractDetailViewModel extends ChangeNotifier {
   }
 
   Future<bool> cancelContract(String justification) async {
-    if (_contract == null || justification.trim().isEmpty) return false;
+    final Contract? currentContract = _contract;
+    if (currentContract == null || justification.trim().isEmpty) return false;
     _isSaving = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       _contract = await _contractRepository.cancelContract(
-        id: _contract!.id,
+        id: currentContract.id,
         justification: justification.trim(),
       );
       _isSaving = false;

@@ -15,8 +15,7 @@ class OfferDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final OfferDetailViewModel viewModel = context
-        .watch<OfferDetailViewModel>();
+    final OfferDetailViewModel viewModel = context.watch<OfferDetailViewModel>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Detalle de la oferta')),
@@ -27,68 +26,35 @@ class OfferDetailView extends StatelessWidget {
   Widget _buildBody(BuildContext context, OfferDetailViewModel viewModel) {
     return switch (viewModel.status) {
       OfferDetailStatus.idle || OfferDetailStatus.loading => const Center(
-        child: CircularProgressIndicator(),
-      ),
+          child: CircularProgressIndicator(),
+        ),
       OfferDetailStatus.error => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(viewModel.errorMessage ?? 'Ocurrió un error.'),
-              const SizedBox(height: AppSpacing.md),
-              OutlinedButton(
-                onPressed: viewModel.load,
-                child: const Text('Reintentar'),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(viewModel.errorMessage ?? 'Ocurrió un error.'),
+                const SizedBox(height: AppSpacing.md),
+                OutlinedButton(
+                  onPressed: viewModel.load,
+                  child: const Text('Reintentar'),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       OfferDetailStatus.loaded =>
-        viewModel.applicationSubmitted
-            ? const _ApplicationSubmittedView()
-            : _OfferDetailContent(
-                offer: viewModel.offer!,
-                viewModel: viewModel,
-              ),
+        // Siempre mostramos el contenido del formulario
+        _OfferDetailContent(
+          offer: viewModel.offer!,
+          viewModel: viewModel,
+        ),
     };
   }
 }
 
-class _ApplicationSubmittedView extends StatelessWidget {
-  const _ApplicationSubmittedView();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const Icon(
-              Icons.check_circle_rounded,
-              color: AppColors.success,
-              size: 56,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              '¡Aplicación enviada!',
-              style: Theme.of(context).textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Text(
-              'Puedes ver el estado de tu aplicación en "Mis aplicaciones".',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+// Eliminamos la clase _ApplicationSubmittedView (ya no se usa)
 
 class _OfferDetailContent extends StatefulWidget {
   const _OfferDetailContent({required this.offer, required this.viewModel});
@@ -129,10 +95,46 @@ class _OfferDetailContentState extends State<_OfferDetailContent> {
         })
         .toList();
 
+    // Llamamos al método apply del viewModel
     await widget.viewModel.apply(
       comment: values[_commentField] as String,
       answers: answers,
     );
+
+    // Después de la llamada, verificamos si hubo error
+    // Suponemos que viewModel.applyErrorMessage es null si fue exitoso
+    // (o usamos un flag como applicationSubmitted si prefieres)
+    final bool success = widget.viewModel.applyErrorMessage == null;
+
+    if (success && mounted) {
+      // Mostrar diálogo de éxito
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          return AlertDialog(
+            title: const Text('¡Aplicación enviada!'),
+            content: const Text(
+              'Tu postulación ha sido registrada. Puedes seguir explorando otras ofertas.',
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(); // cierra el diálogo
+                },
+                child: const Text('Seguir explorando'),
+              ),
+            ],
+          );
+        },
+      );
+
+      // Si el widget sigue montado, salimos de la pantalla de detalle
+      if (mounted) {
+        Navigator.of(context).pop(); // cierra la vista de detalle
+      }
+    }
+    // Si falla, el error ya se muestra en el formulario (ver abajo)
   }
 
   @override
@@ -255,9 +257,6 @@ class _QuestionField extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    // Cada tipo de campo de FormBuilder valida un tipo de valor distinto
-    // (String, DateTime, etc.), así que el validador se arma por caso en
-    // vez de compartir uno solo entre todos.
     final String? Function(String?)? textValidator = question.required
         ? AppValidators.requiredText(question.label)
         : null;
@@ -269,7 +268,6 @@ class _QuestionField extends StatelessWidget {
                 if (value == null) {
                   return '${question.label} es obligatorio.';
                 }
-
                 return null;
               }
             : null;

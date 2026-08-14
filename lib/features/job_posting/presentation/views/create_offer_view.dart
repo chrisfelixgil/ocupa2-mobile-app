@@ -11,9 +11,11 @@ import 'package:latlong2/latlong.dart';
 import '../../../catalog/data/models/job_type.dart';
 import '../../../catalog/data/repositories/catalog_repository.dart';
 import '../../../payments/presentation/viewmodels/make_payment_view_model.dart';
+import '../../../job_search/presentation/viewmodels/explore_offers_view_model.dart';
+import '../../data/models/offer_question.dart';
 import '../viewmodels/create_offer_status.dart';
 import '../viewmodels/create_offer_view_model.dart';
-import 'package:ocupa2/features/job_posting/data/services/upload_service.dart'; 
+import 'package:ocupa2/features/job_posting/data/services/upload_service.dart';
 
 class CreateOfferView extends StatefulWidget {
   const CreateOfferView({super.key});
@@ -32,6 +34,8 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   final _lngController = TextEditingController();
   final _amountController = TextEditingController(text: '1500');
   final _currencyController = TextEditingController(text: 'DOP');
+
+  final List<_OfferQuestionDraft> _questions = <_OfferQuestionDraft>[];
 
   String? _jobTypeKey;
   String? _contractType;
@@ -446,6 +450,100 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     }
   }
 
+  void _addQuestion() {
+    setState(() {
+      _questions.add(
+        const _OfferQuestionDraft(
+          label: '',
+          type: OfferQuestionType.text,
+          required: false,
+          options: <String>[],
+        ),
+      );
+    });
+  }
+
+  void _removeQuestion(int index) {
+    setState(() {
+      _questions.removeAt(index);
+    });
+  }
+
+  void _updateQuestionLabel(int index, String value) {
+    setState(() {
+      _questions[index] = _questions[index].copyWith(label: value);
+    });
+  }
+
+  void _updateQuestionType(int index, String value) {
+    setState(() {
+      _questions[index] = _questions[index].copyWith(
+        type: value,
+        options: value == OfferQuestionType.select
+            ? (_questions[index].options.isEmpty ? const <String>[''] : _questions[index].options)
+            : const <String>[],
+      );
+    });
+  }
+
+  void _updateQuestionRequired(int index, bool value) {
+    setState(() {
+      _questions[index] = _questions[index].copyWith(required: value);
+    });
+  }
+
+  void _addOption(int index) {
+    setState(() {
+      _questions[index] = _questions[index].copyWith(
+        options: <String>[..._questions[index].options, ''],
+      );
+    });
+  }
+
+  void _updateOption(int questionIndex, int optionIndex, String value) {
+    setState(() {
+      final List<String> updatedOptions = [..._questions[questionIndex].options];
+      updatedOptions[optionIndex] = value;
+      _questions[questionIndex] = _questions[questionIndex].copyWith(
+        options: updatedOptions,
+      );
+    });
+  }
+
+  void _removeOption(int questionIndex, int optionIndex) {
+    setState(() {
+      final List<String> updatedOptions = [..._questions[questionIndex].options];
+      if (optionIndex < updatedOptions.length) {
+        updatedOptions.removeAt(optionIndex);
+      }
+      _questions[questionIndex] = _questions[questionIndex].copyWith(
+        options: updatedOptions,
+      );
+    });
+  }
+
+  String? _validateAdditionalQuestions() {
+    for (final _OfferQuestionDraft draft in _questions) {
+      final String label = draft.label.trim();
+      if (label.isEmpty) {
+        continue;
+      }
+
+      if (draft.type == OfferQuestionType.select) {
+        final List<String> validOptions = draft.options
+            .map((option) => option.trim())
+            .where((option) => option.isNotEmpty)
+            .toList();
+
+        if (validOptions.length < 2) {
+          return 'La pregunta "$label" de tipo selección necesita al menos 2 opciones.';
+        }
+      }
+    }
+
+    return null;
+  }
+
   // ============================================================
   // SUBMIT
   // ============================================================
@@ -486,6 +584,12 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       return;
     }
 
+    final String? questionError = _validateAdditionalQuestions();
+    if (questionError != null) {
+      _showMessage(questionError);
+      return;
+    }
+
     final amount = double.tryParse(
       _amountController.text.trim(),
     );
@@ -499,6 +603,28 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
     final currency =
         _currencyController.text.trim();
+
+    final List<OfferQuestion> questions = _questions
+        .where((draft) => draft.label.trim().isNotEmpty)
+        .map((draft) {
+          final String normalizedType = draft.type == OfferQuestionType.boolean
+              ? OfferQuestionType.check
+              : draft.type;
+          final List<String> options = normalizedType == OfferQuestionType.select
+              ? draft.options
+                  .map((option) => option.trim())
+                  .where((option) => option.isNotEmpty)
+                  .toList()
+              : const <String>[];
+
+          return OfferQuestion(
+            label: draft.label.trim(),
+            type: normalizedType,
+            required: draft.required,
+            options: options,
+          );
+        })
+        .toList();
 
     final createOfferViewModel =
         context.read<CreateOfferViewModel>();
@@ -560,11 +686,14 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       amount: amount,
       currency: currency,
       deadline: _deadline!,
+      questions: questions,
     );
 
     if (!mounted) return;
 
     if (offerOk) {
+      context.read<ExploreOffersViewModel>().load();
+
       _showMessage(
         'Pago realizado y oferta publicada correctamente',
       );
@@ -1057,6 +1186,152 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               const SizedBox(height: 20),
 
               // ==================================================
+              // PREGUNTAS ADICIONALES
+              // ==================================================
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  const Text(
+                    'Preguntas adicionales',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _addQuestion,
+                    icon: const Icon(Icons.add_circle_outline_rounded),
+                    label: const Text('Agregar'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (_questions.isEmpty)
+                const Text(
+                  'Sin preguntas extras. Puedes dejarla vacía y el aplicante solo enviará un comentario.',
+                  style: TextStyle(color: Colors.grey),
+                )
+              else
+                ..._questions.asMap().entries.map((entry) {
+                  final int index = entry.key;
+                  final _OfferQuestionDraft draft = entry.value;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: draft.label,
+                                decoration: const InputDecoration(
+                                  labelText: 'Pregunta',
+                                  border: OutlineInputBorder(),
+                                ),
+                                onChanged: (value) => _updateQuestionLabel(index, value),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () => _removeQuestion(index),
+                              icon: const Icon(Icons.delete_outline_rounded),
+                              tooltip: 'Eliminar pregunta',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: draft.type,
+                          decoration: const InputDecoration(
+                            labelText: 'Tipo',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: const <DropdownMenuItem<String>>[
+                            DropdownMenuItem<String>(
+                              value: OfferQuestionType.text,
+                              child: Text('Texto corto'),
+                            ),
+                            DropdownMenuItem<String>(
+                              value: OfferQuestionType.date,
+                              child: Text('Fecha'),
+                            ),
+                            DropdownMenuItem<String>(
+                              value: OfferQuestionType.select,
+                              child: Text('Selección'),
+                            ),
+                            DropdownMenuItem<String>(
+                              value: OfferQuestionType.check,
+                              child: Text('Casilla / sí o no'),
+                            ),
+                          ],
+                          onChanged: (String? value) {
+                            if (value != null) {
+                              _updateQuestionType(index, value);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Obligatoria'),
+                          value: draft.required,
+                          onChanged: (value) => _updateQuestionRequired(index, value),
+                        ),
+                        if (draft.type == OfferQuestionType.select) ...<Widget>[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: <Widget>[
+                              const Expanded(
+                                child: Text(
+                                  'Opciones',
+                                  style: TextStyle(fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => _addOption(index),
+                                icon: const Icon(Icons.add),
+                                label: const Text('Opción'),
+                              ),
+                            ],
+                          ),
+                          ...draft.options.asMap().entries.map((optionEntry) {
+                            final int optionIndex = optionEntry.key;
+                            final String option = optionEntry.value;
+                            return Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: TextFormField(
+                                    initialValue: option,
+                                    decoration: InputDecoration(
+                                      labelText: 'Opción ${optionIndex + 1}',
+                                      border: const OutlineInputBorder(),
+                                    ),
+                                    onChanged: (value) => _updateOption(index, optionIndex, value),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => _removeOption(index, optionIndex),
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
+                              ],
+                            );
+                          }),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
+
+              const SizedBox(height: 20),
+
+              // ==================================================
               // ERROR
               // ==================================================
 
@@ -1106,6 +1381,34 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 // ================================================================
 // SELECTOR DE UBICACIÓN EN MAPA - OPENSTREETMAP
 // ================================================================
+
+class _OfferQuestionDraft {
+  const _OfferQuestionDraft({
+    required this.label,
+    required this.type,
+    required this.required,
+    required this.options,
+  });
+
+  final String label;
+  final String type;
+  final bool required;
+  final List<String> options;
+
+  _OfferQuestionDraft copyWith({
+    String? label,
+    String? type,
+    bool? required,
+    List<String>? options,
+  }) {
+    return _OfferQuestionDraft(
+      label: label ?? this.label,
+      type: type ?? this.type,
+      required: required ?? this.required,
+      options: options ?? this.options,
+    );
+  }
+}
 
 class _MapLocationPicker extends StatefulWidget {
   final LatLng initialPosition;

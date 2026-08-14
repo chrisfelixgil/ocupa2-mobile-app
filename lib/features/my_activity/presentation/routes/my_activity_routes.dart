@@ -7,6 +7,7 @@ import 'package:ocupa2/features/my_activity/presentation/views/contract_detail_v
 import 'package:ocupa2/features/my_activity/presentation/views/experiences_view.dart';
 import 'package:ocupa2/features/my_activity/presentation/views/my_applications_view.dart';
 import 'package:ocupa2/features/my_activity/presentation/views/my_contracts_view.dart';
+import 'package:ocupa2/features/my_activity/presentation/views/my_offers_view.dart';
 import 'package:provider/provider.dart';
 
 List<RouteBase> myActivityRoutes() {
@@ -22,6 +23,11 @@ List<RouteBase> myActivityRoutes() {
       builder: (_, _) => const MyApplicationsView(),
     ),
     GoRoute(
+      path: RoutePaths.myOffers,
+      name: AppRouteNames.myOffers,
+      builder: (_, _) => const MyOffersView(),
+    ),
+    GoRoute(
       path: RoutePaths.myContracts,
       name: AppRouteNames.myContracts,
       builder: (_, _) => const MyContractsView(),
@@ -30,7 +36,15 @@ List<RouteBase> myActivityRoutes() {
       path: RoutePaths.contractDetailPattern,
       name: AppRouteNames.contractDetail,
       builder: (BuildContext context, GoRouterState state) {
-        final String contractId = state.pathParameters['id']!;
+        final String? contractId = state.pathParameters['id']?.trim();
+
+        if (contractId == null || contractId.isEmpty) {
+          return const Scaffold(
+            body: Center(
+              child: Text('No se pudo abrir el contrato porque faltó su identificador.'),
+            ),
+          );
+        }
 
         return ChangeNotifierProvider<ContractDetailViewModel>(
           create: (BuildContext context) {
