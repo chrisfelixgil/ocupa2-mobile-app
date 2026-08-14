@@ -5,6 +5,7 @@ import 'package:ocupa2/features/my_activity/data/models/application.dart';
 import 'package:ocupa2/features/my_activity/data/models/experience.dart';
 
 import '../../data/models/offer.dart';
+import '../../data/models/offer_question.dart';
 import '../../data/models/offer_status.dart';
 import '../viewmodels/offer_detail_status.dart';
 import '../viewmodels/offer_detail_view_model.dart';
@@ -237,6 +238,23 @@ class _OfferContent extends StatelessWidget {
             ),
           ),
 
+          // ============================================================
+          // PREGUNTAS ADICIONALES
+          // ============================================================
+          if (offer.questions.isNotEmpty) ...[
+            const SizedBox(height: 28),
+            Text(
+              'Preguntas adicionales',
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...offer.questions.map(
+              (question) => _OfferQuestionTile(question: question),
+            ),
+          ],
+
           const SizedBox(height: 28),
 
           // ============================================================
@@ -322,6 +340,112 @@ class _OfferContent extends StatelessWidget {
         content: Text(
           ok ? 'Oferta desactivada' : 'No se pudo desactivar la oferta',
         ),
+      ),
+    );
+  }
+}
+
+class _OfferQuestionTile extends StatelessWidget {
+  const _OfferQuestionTile({required this.question});
+
+  final OfferQuestion question;
+
+  String get _typeLabel {
+    switch (question.type) {
+      case OfferQuestionType.text:
+        return 'Texto';
+      case OfferQuestionType.date:
+        return 'Fecha';
+      case OfferQuestionType.select:
+        return 'Selección';
+      case OfferQuestionType.check:
+        return 'Casilla de verificación';
+      default:
+        return question.type;
+    }
+  }
+
+  IconData get _typeIcon {
+    switch (question.type) {
+      case OfferQuestionType.text:
+        return Icons.short_text;
+      case OfferQuestionType.date:
+        return Icons.calendar_today_outlined;
+      case OfferQuestionType.select:
+        return Icons.list_alt;
+      case OfferQuestionType.check:
+        return Icons.check_box_outlined;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  question.label,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              if (question.required)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    'Obligatoria',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(_typeIcon, size: 16, color: Colors.grey.shade700),
+              const SizedBox(width: 6),
+              Text(
+                _typeLabel,
+                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+              ),
+            ],
+          ),
+          if (question.type == OfferQuestionType.select &&
+              question.options.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: question.options
+                  .map((option) => Chip(label: Text(option)))
+                  .toList(),
+            ),
+          ],
+        ],
       ),
     );
   }

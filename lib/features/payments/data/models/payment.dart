@@ -5,10 +5,12 @@ class Payment {
   final double amount;
   final String currency;
   final PaymentStatus status;
+  final String? concept;
   final String? cardLast4;
   final String? cardholder;
   final String? reference;
   final bool consumed;
+  final String? offerId;
   final String? declineReason;
   final DateTime? createdAt;
 
@@ -17,10 +19,12 @@ class Payment {
     required this.amount,
     required this.currency,
     required this.status,
+    this.concept,
     this.cardLast4,
     this.cardholder,
     this.reference,
     this.consumed = false,
+    this.offerId,
     this.declineReason,
     this.createdAt,
   });
@@ -33,10 +37,12 @@ class Payment {
       status: paymentStatusFromString(
         json['status']?.toString(),
       ),
+      concept: json['concept']?.toString(),
       cardLast4: json['cardLast4']?.toString(),
       cardholder: json['cardholder']?.toString(),
       reference: json['reference']?.toString(),
       consumed: json['consumed'] as bool? ?? false,
+      offerId: json['offerId']?.toString(),
       declineReason: json['declineReason']?.toString(),
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-
 import '../viewmodels/my_payments_status.dart';
 import '../viewmodels/my_payments_view_model.dart';
+import 'package:ocupa2/features/payments/presentation/views/payment_detail_view.dart';
+
 import '../widgets/payment_card.dart';
 
 class MyPaymentsView extends StatefulWidget {
@@ -35,7 +36,7 @@ class _MyPaymentsViewState extends State<MyPaymentsView> {
             switch (viewModel.status) {
               case MyPaymentsStatus.idle:
               case MyPaymentsStatus.loading:
-                return Center(child: CircularProgressIndicator());
+                return const Center(child: CircularProgressIndicator());
               case MyPaymentsStatus.error:
                 return ListView(
                   children: [
@@ -62,7 +63,18 @@ class _MyPaymentsViewState extends State<MyPaymentsView> {
                   padding: const EdgeInsets.all(16),
                   itemCount: viewModel.payments.length,
                   itemBuilder: (context, index) {
-                    return PaymentCard(payment: viewModel.payments[index]);
+                    final payment = viewModel.payments[index];
+                    return InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PaymentDetailView(payment: payment),
+                          ),
+                        );
+                      },
+                      child: PaymentCard(payment: payment),
+                    );
                   },
                 );
             }
