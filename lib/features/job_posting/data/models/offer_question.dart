@@ -4,6 +4,7 @@ class OfferQuestionType {
   static const date = 'date';
   static const select = 'select';
   static const check = 'check';
+  static const boolean = 'boolean';
 }
 
 class OfferQuestion {
@@ -20,9 +21,17 @@ class OfferQuestion {
   });
 
   factory OfferQuestion.fromJson(Map<String, dynamic> json) {
+    final String rawType = (json['type'] as String? ?? OfferQuestionType.text)
+        .trim()
+        .toLowerCase();
+
     return OfferQuestion(
       label: json['label'] as String? ?? '',
-      type: json['type'] as String? ?? OfferQuestionType.text,
+      type: rawType == 'boolean'
+          ? OfferQuestionType.check
+          : rawType == 'date' || rawType == 'check' || rawType == 'select' || rawType == 'text'
+              ? rawType
+              : OfferQuestionType.text,
       required: json['required'] as bool? ?? false,
       options: (json['options'] as List<dynamic>? ?? [])
           .map((e) => e.toString())

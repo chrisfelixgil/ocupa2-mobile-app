@@ -32,10 +32,13 @@ class _JobPostingOfferDetailViewState extends State<JobPostingOfferDetailView> {
 
   @override
   Widget build(BuildContext context) {
-    final viewModel = context.watch<JobPostingOfferDetailViewModel>();
+    final viewModel =
+        context.watch<JobPostingOfferDetailViewModel>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detalle de la oferta')),
+      appBar: AppBar(
+        title: const Text('Detalle de la oferta'),
+      ),
       body: _buildBody(context, viewModel),
     );
   }
@@ -47,7 +50,9 @@ class _JobPostingOfferDetailViewState extends State<JobPostingOfferDetailView> {
     switch (viewModel.status) {
       case JobPostingOfferDetailStatus.idle:
       case JobPostingOfferDetailStatus.loading:
-        return const Center(child: CircularProgressIndicator());
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
 
       case JobPostingOfferDetailStatus.error:
         return Center(
@@ -56,15 +61,23 @@ class _JobPostingOfferDetailViewState extends State<JobPostingOfferDetailView> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                const Icon(
+                  Icons.error_outline,
+                  size: 60,
+                  color: Colors.red,
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   'Error cargando oferta',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  viewModel.errorMessage ?? 'Error al cargar la oferta',
+                  viewModel.errorMessage ??
+                      'Error al cargar la oferta',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -83,16 +96,24 @@ class _JobPostingOfferDetailViewState extends State<JobPostingOfferDetailView> {
         final Offer? offer = viewModel.offer;
 
         if (offer == null) {
-          return const Center(child: Text('No se encontró la oferta'));
+          return const Center(
+            child: Text('No se encontró la oferta'),
+          );
         }
 
-        return _OfferContent(offer: offer, viewModel: viewModel);
+        return _OfferContent(
+          offer: offer,
+          viewModel: viewModel,
+        );
     }
   }
 }
 
 class _OfferContent extends StatelessWidget {
-  const _OfferContent({required this.offer, required this.viewModel});
+  const _OfferContent({
+    required this.offer,
+    required this.viewModel,
+  });
 
   final Offer offer;
   final JobPostingOfferDetailViewModel viewModel;
@@ -109,7 +130,9 @@ class _OfferContent extends StatelessWidget {
           // ============================================================
           // FOTO
           // ============================================================
-          if (offer.photo != null && offer.photo!.trim().isNotEmpty)
+
+          if (offer.photo != null &&
+              offer.photo!.trim().isNotEmpty)
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Image.network(
@@ -130,16 +153,23 @@ class _OfferContent extends StatelessWidget {
           // ============================================================
           // TIPO DE TRABAJO
           // ============================================================
+
           Text(
-            offer.jobTypeName.isNotEmpty ? offer.jobTypeName : offer.jobTypeKey,
+            offer.jobTypeName.isNotEmpty
+                ? offer.jobTypeName
+                : offer.jobTypeKey,
             style: textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
 
-          if (offer.jobTypeName.isNotEmpty && offer.jobTypeKey.isNotEmpty) ...[
+          if (offer.jobTypeName.isNotEmpty &&
+              offer.jobTypeKey.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(offer.jobTypeKey, style: textTheme.bodySmall),
+            Text(
+              offer.jobTypeKey,
+              style: textTheme.bodySmall,
+            ),
           ],
 
           const SizedBox(height: 12),
@@ -147,12 +177,21 @@ class _OfferContent extends StatelessWidget {
           // ============================================================
           // DIRECCIÓN
           // ============================================================
+
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.location_on_outlined, size: 22),
+              const Icon(
+                Icons.location_on_outlined,
+                size: 22,
+              ),
               const SizedBox(width: 8),
-              Expanded(child: Text(offer.address, style: textTheme.bodyLarge)),
+              Expanded(
+                child: Text(
+                  offer.address,
+                  style: textTheme.bodyLarge,
+                ),
+              ),
             ],
           ),
 
@@ -161,6 +200,7 @@ class _OfferContent extends StatelessWidget {
           // ============================================================
           // INFORMACIÓN PRINCIPAL
           // ============================================================
+
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -169,15 +209,12 @@ class _OfferContent extends StatelessWidget {
                 avatar: const Icon(Icons.work_outline, size: 18),
                 label: Text(offer.contractType),
               ),
-
               Chip(
                 avatar: const Icon(Icons.payments_outlined, size: 18),
                 label: Text(
-                  '${offer.payment.amount} '
-                  '${offer.payment.currency}',
+                  '${offer.payment.amount} ${offer.payment.currency}',
                 ),
               ),
-
               if (offer.deadline != null)
                 Chip(
                   avatar: const Icon(Icons.calendar_today_outlined, size: 18),
@@ -291,6 +328,11 @@ class _OfferContent extends StatelessWidget {
                 onDiscard: () => viewModel.updateApplicantStatus(
                   applicationId: applicant.id,
                   status: 'discarded',
+                ),
+                onRate: (int rating) => viewModel.updateApplicantStatus(
+                  applicationId: applicant.id,
+                  status: applicant.status,
+                  rating: rating,
                 ),
               );
             }),
@@ -458,6 +500,7 @@ class _ApplicantCard extends StatelessWidget {
     required this.onSelectFinalist,
     required this.onSelectWinner,
     required this.onDiscard,
+    required this.onRate,
   });
 
   final Application applicant;
@@ -465,6 +508,7 @@ class _ApplicantCard extends StatelessWidget {
   final VoidCallback onSelectFinalist;
   final VoidCallback onSelectWinner;
   final VoidCallback onDiscard;
+  final ValueChanged<int> onRate;
 
   Future<void> _openCertificateDialog(
     BuildContext context,
@@ -495,16 +539,15 @@ class _ApplicantCard extends StatelessWidget {
                   child: Image.network(
                     imageUrl,
                     fit: BoxFit.contain,
-                    errorBuilder:
-                        (
-                          BuildContext context,
-                          Object error,
-                          StackTrace? stackTrace,
-                        ) {
-                          return const Center(
-                            child: Text('No se pudo cargar el certificado'),
-                          );
-                        },
+                    errorBuilder: (
+                      BuildContext context,
+                      Object error,
+                      StackTrace? stackTrace,
+                    ) {
+                      return const Center(
+                        child: Text('No se pudo cargar el certificado'),
+                      );
+                    },
                   ),
                 ),
               ),
@@ -587,25 +630,77 @@ class _ApplicantCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: applicant.applicantExperiences
-                  .where((experience) => experience.title.trim().isNotEmpty)
-                  .map((experience) {
-                    return ActionChip(
-                      avatar: const Icon(Icons.badge_outlined, size: 18),
-                      label: Text(experience.title),
-                      onPressed:
-                          (experience.certificateImage?.trim().isNotEmpty ??
-                              false)
-                          ? () => _openCertificateDialog(context, experience)
-                          : null,
-                    );
-                  })
-                  .toList(),
-            ),
+            ...applicant.applicantExperiences
+                .where((experience) => experience.title.trim().isNotEmpty)
+                .map((experience) {
+              return Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: (experience.certificateImage?.trim().isNotEmpty ?? false)
+                      ? () => _openCertificateDialog(context, experience)
+                      : null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.badge_outlined, size: 16),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              experience.title,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if ((experience.description).trim().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          experience.description,
+                          style: TextStyle(color: Colors.grey.shade700),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
           ],
+          const SizedBox(height: 12),
+          Text(
+            'Calificación',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: List.generate(5, (int index) {
+              final int starValue = index + 1;
+              final bool isFilled = (applicant.rating ?? 0) >= starValue;
+              return IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                onPressed: isUpdating ? null : () => onRate(starValue),
+                icon: Icon(
+                  isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
+                  color: Colors.amber,
+                  size: 20,
+                ),
+              );
+            }),
+          ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,

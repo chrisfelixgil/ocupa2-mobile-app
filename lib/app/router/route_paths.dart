@@ -11,6 +11,7 @@ abstract final class RoutePaths {
   // my_activity
   static const String myExperiences = '/my-activity/experiences';
   static const String myApplications = '/my-activity/applications';
+  static const String myOffers = '/my-activity/offers';
   static const String myContracts = '/my-activity/contracts';
   static const String contractDetailPattern = '/my-activity/contracts/:id';
 

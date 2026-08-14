@@ -1,0 +1,8 @@
+- Nunca hagas refactorizaciones no solicitadas.
+- Mantiene el estilo y patrón de diseño del código existente.
+- Proporciona respuestas concisas enfocate en los cambios específicos de código.
+- Proyecto: Ocupa2 Mobile App (Flutter/Dart).
+- Desarrollador: Abisai Mora Quezada (Módulo lib/features/my_activity/).
+- REGLA DE ORO: No refactorices, no cambies nombres de variables ni estilos que ya funcionen.
+- Proporciona respuestas concisas enfocado únicamente en los cambios/diferencias de código.
+- Usa los paquetes existentes: provider, dio, go_router, flutter_form_builder.

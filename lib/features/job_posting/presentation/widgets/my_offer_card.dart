@@ -31,31 +31,24 @@ class MyOfferCard extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: isActive
-            ? (isDeactivating
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : TextButton(
-                    onPressed: onDeactivate,
-                    child: const Text('Desactivar'),
-                  ))
-            : (offer.photo != null && offer.photo!.isNotEmpty
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      offer.photo!,
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.image_not_supported);
-                      },
-                    ),
-                  )
-                : const Icon(Icons.image)),
+        trailing: isDeactivating
+    ? const SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      )
+    : SizedBox(
+        width: 110,
+        child: TextButton.icon(
+          onPressed: onDeactivate,
+          icon: const Icon(Icons.delete_outline, size: 18),
+          label: const Text('Eliminar'),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            minimumSize: const Size(0, 36),
+          ),
+        ),
+      ),
       ),
     );
   }

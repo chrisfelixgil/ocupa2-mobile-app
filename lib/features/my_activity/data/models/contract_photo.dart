@@ -20,23 +20,31 @@ class ContractPhoto {
       context: 'Una foto de contrato',
     );
 
+    String? asText(Object? value) {
+      if (value == null) return null;
+      if (value is String) return value.trim();
+      if (value is num || value is bool) return value.toString().trim();
+      return value.toString().trim();
+    }
+
     ContractParty? author;
-    if (map['by'] != null) {
+    final Object? rawAuthor = map['by'] ?? map['author'] ?? map['user'];
+    if (rawAuthor != null) {
       try {
-        author = ContractParty.fromJson(map['by']);
+        author = ContractParty.fromJson(rawAuthor);
       } catch (_) {
         author = null;
       }
     }
 
-    final Object? rawCreatedAt = map['createdAt'];
+    final Object? rawCreatedAt = map['createdAt'] ?? map['date'] ?? map['timestamp'];
     final DateTime? date = rawCreatedAt is String
         ? DateTime.tryParse(rawCreatedAt.trim())
         : null;
 
     return ContractPhoto(
-      url: requireString(map, 'url', context: 'Una foto de contrato'),
-      description: (map['description'] as String?)?.trim() ?? '',
+      url: asText(map['url']) ?? asText(map['image']) ?? asText(map['photo']) ?? '',
+      description: asText(map['description']) ?? asText(map['caption']) ?? '',
       by: author,
       createdAt: date,
     );

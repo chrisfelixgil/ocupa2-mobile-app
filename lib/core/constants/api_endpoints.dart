@@ -27,8 +27,11 @@ abstract final class ApiEndpoints {
   static String contractCancel(String id) => '/contracts/$id/cancel';
 
   static const String offers = '/offers';
+  static const String myOffers = '/me/offers';
 
   static String offerDetail(String id) => '/offers/$id';
 
   static String applyToOffer(String id) => '/offers/$id/apply';
+
+  static String deactivateOffer(String id) => '/offers/$id/deactivate';
 }

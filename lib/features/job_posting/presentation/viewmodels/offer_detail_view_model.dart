@@ -61,6 +61,7 @@ class JobPostingOfferDetailViewModel extends ChangeNotifier {
   Future<bool> updateApplicantStatus({
     required String applicationId,
     required String status,
+    int? rating,
   }) async {
     _isUpdatingApplicant = true;
     _errorMessage = null;
@@ -71,6 +72,7 @@ class JobPostingOfferDetailViewModel extends ChangeNotifier {
           await _applicationRepository.updateApplication(
         id: applicationId,
         status: status,
+        rating: rating,
       );
 
       _applicants = _applicants.map((Application item) {

@@ -13,4 +13,5 @@ abstract class JobPostingService {
 
   /// POST /offers/{id}/deactivate
   Future<void> deactivateOffer(String id);
+  Future<void> deleteOffer(String id);
 }

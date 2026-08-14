@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
 import 'package:ocupa2/app/router/app_routes.dart';
 import 'package:ocupa2/app/router/route_paths.dart';
+import 'package:ocupa2/features/job_posting/data/repositories/job_posting_repository.dart';
+import 'package:ocupa2/features/job_search/data/repositories/job_search_repository.dart';
+import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offers_view_model.dart';
 import 'package:ocupa2/features/job_search/presentation/viewmodels/offer_detail_view_model.dart';
 import 'package:ocupa2/features/job_search/presentation/views/explore_offers_view.dart';
 import 'package:ocupa2/features/job_search/presentation/views/offer_detail_view.dart';
 import 'package:ocupa2/features/job_search/presentation/views/offer_map_view.dart';
-import 'package:provider/provider.dart';
+import 'package:ocupa2/features/my_activity/data/repositories/application_repository.dart';
 
 /// Rutas del módulo job_search: Explorar, Mapa, y Detalle + Aplicar.
 ///
@@ -19,14 +24,32 @@ List<RouteBase> jobSearchRoutes() {
       path: RoutePaths.jobSearchExplore,
       name: AppRouteNames.jobSearchExplore,
       builder: (BuildContext context, GoRouterState state) {
-        return const ExploreOffersView();
+        return ChangeNotifierProvider<ExploreOffersViewModel>(
+          create: (BuildContext routeContext) {
+            return ExploreOffersViewModel(
+              jobSearchRepository: routeContext.read<JobSearchRepository>(),
+              applicationRepository: routeContext.read<ApplicationRepository>(),
+              jobPostingRepository: routeContext.read<JobPostingRepository>(),
+            );
+          },
+          child: const ExploreOffersView(),
+        );
       },
     ),
     GoRoute(
       path: RoutePaths.jobSearchMap,
       name: AppRouteNames.jobSearchMap,
       builder: (BuildContext context, GoRouterState state) {
-        return const OfferMapView();
+        return ChangeNotifierProvider<ExploreOffersViewModel>(
+          create: (BuildContext routeContext) {
+            return ExploreOffersViewModel(
+              jobSearchRepository: routeContext.read<JobSearchRepository>(),
+              applicationRepository: routeContext.read<ApplicationRepository>(),
+              jobPostingRepository: routeContext.read<JobPostingRepository>(),
+            );
+          },
+          child: const OfferMapView(),
+        );
       },
     ),
     GoRoute(

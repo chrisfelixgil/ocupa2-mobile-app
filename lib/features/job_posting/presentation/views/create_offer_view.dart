@@ -15,6 +15,7 @@ import '../../data/models/offer_question.dart';
 import '../viewmodels/create_offer_status.dart';
 import '../viewmodels/create_offer_view_model.dart';
 import 'package:ocupa2/features/job_posting/data/services/upload_service.dart';
+import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offers_view_model.dart';
 
 class CreateOfferView extends StatefulWidget {
   const CreateOfferView({super.key});
@@ -34,6 +35,8 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   final _amountController = TextEditingController(text: '1500');
   final _currencyController = TextEditingController(text: 'DOP');
   final List<_OfferQuestionForm> _questions = [];
+
+
 
   String? _jobTypeKey;
   String? _contractType;
@@ -389,6 +392,65 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     }
   }
 
+  // Added methods for managing question updates and options
+  // Update label of a question
+  void _updateQuestionLabel(int index, String value) {
+    setState(() {
+      _questions[index].labelController.text = value;
+    });
+  }
+
+  // Update type of a question and clear options if not applicable
+  void _updateQuestionType(int index, String type) {
+    setState(() {
+      _questions[index].type = type;
+      if (!_typeSupportsOptions(type)) {
+        for (var ctrl in _questions[index].optionControllers) {
+          ctrl.dispose();
+        }
+        _questions[index].optionControllers.clear();
+      }
+    });
+  }
+
+  // Update required flag
+  void _updateQuestionRequired(int index, bool required) {
+    setState(() {
+      _questions[index].required = required;
+    });
+  }
+
+  // Add option to a question
+  void _addOption(int questionIndex) {
+    setState(() {
+      _questions[questionIndex].optionControllers.add(TextEditingController());
+    });
+  }
+
+  // Remove option from a question
+  void _removeOption(int questionIndex, int optionIndex) {
+    setState(() {
+      _questions[questionIndex].optionControllers[optionIndex].dispose();
+      _questions[questionIndex].optionControllers.removeAt(optionIndex);
+    });
+  }
+
+  // Update option text
+  void _updateOption(int questionIndex, int optionIndex, String value) {
+    setState(() {
+      _questions[questionIndex].optionControllers[optionIndex].text = value;
+    });
+  }
+
+  String? _validateAdditionalQuestions() {
+    for (final q in _questions) {
+      if (!q.isValid) {
+        return 'La pregunta "${q.labelController.text}" no es válida. Asegúrate de que el label esté completo y, si es de selección, al menos dos opciones.';
+      }
+    }
+    return null;
+  }
+
   // ============================================================
   // PREGUNTAS ADICIONALES
   // ============================================================
@@ -403,19 +465,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     setState(() {
       _questions[index].dispose();
       _questions.removeAt(index);
-    });
-  }
-
-  void _addOption(_OfferQuestionForm question) {
-    setState(() {
-      question.optionControllers.add(TextEditingController());
-    });
-  }
-
-  void _removeOption(_OfferQuestionForm question, int index) {
-    setState(() {
-      question.optionControllers[index].dispose();
-      question.optionControllers.removeAt(index);
     });
   }
 
@@ -445,6 +494,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
             ),
             TextFormField(
               controller: question.labelController,
+              onChanged: (val) => _updateQuestionLabel(index, val),
               decoration: const InputDecoration(
                 labelText: 'Texto de la pregunta',
                 border: OutlineInputBorder(),
@@ -452,7 +502,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              initialValue: question.type,
+              value: question.type,
               decoration: const InputDecoration(
                 labelText: 'Tipo de respuesta',
                 border: OutlineInputBorder(),
@@ -505,7 +555,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
                         ),
                       ),
                       IconButton(
-                        onPressed: () => _removeOption(question, optIndex),
+                        onPressed: () => _removeOption(index, optIndex),
                         icon: const Icon(Icons.close),
                       ),
                     ],
@@ -513,7 +563,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
                 );
               }),
               TextButton.icon(
-                onPressed: () => _addOption(question),
+                onPressed: () => _addOption(index),
                 icon: const Icon(Icons.add),
                 label: const Text('Agregar opción'),
               ),
@@ -662,14 +712,24 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       return;
     }
 
-    final amount = double.tryParse(_amountController.text.trim());
+    final String? questionError = _validateAdditionalQuestions();
+    if (questionError != null) {
+      _showMessage(questionError);
+      return;
+    }
 
+    final amount = double.tryParse(_amountController.text.trim());
     if (amount == null || amount <= 0) {
       _showMessage('El monto debe ser válido.');
       return;
     }
 
     final currency = _currencyController.text.trim();
+
+    final List<OfferQuestion> questions = _questions
+        .where((q) => q.labelController.text.trim().isNotEmpty)
+        .map((q) => q.toOfferQuestion())
+        .toList();
 
     // Se muestra el modal de confirmación antes de procesar el pago.
     final confirmation = await _showPaymentConfirmationDialog(
@@ -712,24 +772,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       return;
     }
 
-    // Solo se toman en cuenta las preguntas con texto (label) escrito.
-    final validQuestions = _questions
-        .where((q) => q.labelController.text.trim().isNotEmpty)
-        .toList();
-
-    for (final question in validQuestions) {
-      if (!question.isValid) {
-        _showMessage(
-          'Revisa las preguntas adicionales: las de tipo "Selección" '
-          'necesitan al menos 2 opciones.',
-        );
-        return;
-      }
-    }
-
-    final questionsToSend =
-        validQuestions.map((q) => q.toOfferQuestion()).toList();
-
     final offerOk = await createOfferViewModel.submit(
       jobTypeKey: _jobTypeKey!,
       contractType: _contractType!,
@@ -745,12 +787,14 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       amount: amount,
       currency: currency,
       deadline: _deadline!,
-      questions: questionsToSend,
+      questions: questions,
     );
 
     if (!mounted) return;
 
     if (offerOk) {
+      context.read<ExploreOffersViewModel>().load();
+
       _showMessage('Pago realizado y oferta publicada correctamente');
 
       Navigator.of(context).pop();

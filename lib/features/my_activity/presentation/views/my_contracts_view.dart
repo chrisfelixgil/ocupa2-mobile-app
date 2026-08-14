@@ -144,8 +144,8 @@ class _ContractCard extends StatelessWidget {
                         if (contract.otherParty != null)
                           Text(
                             contract.isContratante
-                                ? 'Contratado: ${contract.otherParty!.nombre}'
-                                : 'Contratante: ${contract.otherParty!.nombre}',
+                                ? 'Contratado: ${contract.otherParty?.nombre ?? 'Sin información'}'
+                                : 'Contratante: ${contract.otherParty?.nombre ?? 'Sin información'}',
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                       ],

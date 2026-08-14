@@ -41,14 +41,18 @@ class ExperienceServiceImpl implements ExperienceService {
     required String description,
     String? certificateImage,
   }) async {
+    final Map<String, String> data = <String, String>{
+      'title': title,
+      'description': description,
+    };
+    if (certificateImage != null && certificateImage.trim().isNotEmpty) {
+      data['certificateImage'] = certificateImage;
+    }
+
     final Object? response = await _apiClient.post(
       ApiEndpoints.myExperiences,
       auth: RequestAuth.protected,
-      data: <String, String>{
-        'title': title,
-        'description': description,
-        'certificateImage': ?certificateImage,
-      },
+      data: data,
     );
 
     return _parse(response, Experience.fromJson);

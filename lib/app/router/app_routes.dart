@@ -11,6 +11,7 @@ abstract final class AppRouteNames {
   // my_activity
   static const String myExperiences = 'my-experiences';
   static const String myApplications = 'my-applications';
+  static const String myOffers = 'my-offers';
   static const String myContracts = 'my-contracts';
   static const String contractDetail = 'contract-detail';
 

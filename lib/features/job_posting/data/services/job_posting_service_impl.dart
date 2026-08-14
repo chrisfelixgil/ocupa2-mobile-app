@@ -51,6 +51,15 @@ class JobPostingServiceImpl implements JobPostingService {
     );
   }
 
+  @override
+  Future<void> deleteOffer(String id) async {
+    // The backend does not support DELETE on /offers/{id}. Use the deactivate endpoint instead.
+    await _apiClient.post(
+      JobPostingEndpoints.deactivateOffer(id),
+      auth: RequestAuth.protected,
+    );
+  }
+
   List<Map<String, dynamic>> _asList(dynamic response) {
     dynamic data = response;
 

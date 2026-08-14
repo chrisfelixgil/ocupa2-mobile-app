@@ -27,4 +27,9 @@ class JobPostingRepositoryImpl implements JobPostingRepository {
   Future<void> deactivateOffer(String id) {
     return _jobPostingService.deactivateOffer(id);
   }
+
+  @override
+  Future<void> deleteOffer(String id) {
+    return _jobPostingService.deleteOffer(id);
+  }
 }

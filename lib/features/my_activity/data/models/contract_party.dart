@@ -17,12 +17,45 @@ class ContractParty {
       context: 'Una parte del contrato',
     );
 
+    String? asText(Object? value) {
+      if (value == null) return null;
+      if (value is String) return value.trim();
+      if (value is num || value is bool) return value.toString().trim();
+      return value.toString().trim();
+    }
+
+    final Map<String, dynamic>? nestedUser =
+        map['user'] is Map ? Map<String, dynamic>.from(map['user'] as Map) : null;
+
+    final String resolvedId = asText(map['id']) ??
+        asText(map['userId']) ??
+        asText(map['contractorId']) ??
+        asText(map['employeeId']) ??
+        asText(nestedUser?['id']) ??
+        'unknown-party';
+
+    final String? explicitName = asText(map['nombre']) ??
+        asText(map['name']) ??
+        asText(map['fullName']) ??
+        asText(nestedUser?['nombre']) ??
+        asText(nestedUser?['name']) ??
+        asText(nestedUser?['fullName']);
+
+    final String? firstName = asText(map['firstName']) ?? asText(nestedUser?['firstName']);
+    final String? lastName = asText(map['lastName']) ?? asText(nestedUser?['lastName']);
+    final String resolvedName =
+        explicitName != null && explicitName.isNotEmpty
+            ? explicitName
+            : (firstName != null || lastName != null)
+                ? <String?>[firstName, lastName]
+                    .where((String? value) => value != null && value.isNotEmpty)
+                    .join(' ')
+                : 'Usuario';
+
     return ContractParty(
-      id: requireString(map, 'id', context: 'Una parte del contrato'),
-      nombre: (map['nombre'] as String?)?.trim() ??
-          (map['firstName'] as String?)?.trim() ??
-          'Usuario',
-      email: (map['email'] as String?)?.trim(),
+      id: resolvedId,
+      nombre: resolvedName.isNotEmpty ? resolvedName : 'Usuario',
+      email: asText(map['email']) ?? asText(nestedUser?['email']),
     );
   }
 }

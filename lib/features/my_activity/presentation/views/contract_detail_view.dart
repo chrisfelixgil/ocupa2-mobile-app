@@ -75,7 +75,7 @@ class _ContractDetailViewState extends State<ContractDetailView> {
             if (contract.otherParty != null)
               _InfoRow(
                 label: contract.isContratante ? 'Contratado' : 'Contratante',
-                value: contract.otherParty!.nombre,
+                value: contract.otherParty?.nombre ?? 'Sin información',
               ),
             _InfoRow(label: 'Estado', value: contract.displayStatusLabel),
             if (contract.salary != null)
@@ -88,8 +88,8 @@ class _ContractDetailViewState extends State<ContractDetailView> {
                 label: 'Inicio',
                 value: _formatDate(contract.startDate!),
               ),
-            if (contract.duration != null && contract.duration!.isNotEmpty)
-              _InfoRow(label: 'Duración', value: contract.duration!),
+            if ((contract.duration ?? '').isNotEmpty)
+              _InfoRow(label: 'Duración', value: contract.duration ?? 'Sin información'),
             if (contract.acceptedAt != null)
               _InfoRow(
                 label: 'Aceptado el',
@@ -100,11 +100,10 @@ class _ContractDetailViewState extends State<ContractDetailView> {
                 label: 'Cancelado el',
                 value: _formatDate(contract.cancelledAt!),
               ),
-            if (contract.cancelJustification != null &&
-                contract.cancelJustification!.isNotEmpty)
+            if ((contract.cancelJustification ?? '').isNotEmpty)
               _InfoRow(
                 label: 'Justificación',
-                value: contract.cancelJustification!,
+                value: contract.cancelJustification ?? 'Sin información',
               ),
           ],
         ),
@@ -199,14 +198,17 @@ class _ContractDetailViewState extends State<ContractDetailView> {
     ContractDetailViewModel viewModel,
     Contract contract,
   ) async {
+    final num? salaryValue = contract.salary;
+    final DateTime? startDateValue = contract.startDate;
+
     final TextEditingController salaryController = TextEditingController(
-      text: contract.salary != null ? contract.salary!.toString() : '',
+      text: salaryValue != null ? salaryValue.toString() : '',
     );
     final TextEditingController currencyController = TextEditingController(
       text: contract.currency ?? 'DOP',
     );
     final TextEditingController startDateController = TextEditingController(
-      text: contract.startDate != null ? _formatDate(contract.startDate!) : '',
+      text: startDateValue != null ? _formatDate(startDateValue) : '',
     );
     final TextEditingController durationController = TextEditingController(
       text: contract.duration ?? '',
@@ -441,7 +443,7 @@ class _ContractHeader extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             if (contract.otherParty != null)
-              Text('Con: ${contract.otherParty!.nombre}'),
+              Text('Con: ${contract.otherParty?.nombre ?? 'Sin información'}'),
           ],
         ),
       ),
@@ -611,16 +613,25 @@ class _PrimaryActionCard extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
-            FilledButton.icon(
-              onPressed: onPressed,
-              icon: isLoading
-                  ? const SizedBox.square(
-                      dimension: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(icon),
-              label: Text(label),
-              style: FilledButton.styleFrom(backgroundColor: color),
+            Flexible(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.icon(
+                  onPressed: onPressed,
+                  icon: isLoading
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(icon),
+                  label: Text(label),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: color,
+                    minimumSize: const Size(0, 44),
+                    maximumSize: const Size(220, 52),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -655,20 +666,34 @@ class _ActionButtonsRow extends StatelessWidget {
     return Row(
       children: <Widget>[
         Expanded(
-          child: FilledButton.icon(
-            onPressed: firstOnPressed,
-            icon: Icon(firstIcon),
-            label: Text(firstLabel),
-            style: FilledButton.styleFrom(backgroundColor: firstColor),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 220),
+            child: FilledButton.icon(
+              onPressed: firstOnPressed,
+              icon: Icon(firstIcon),
+              label: Text(firstLabel),
+              style: FilledButton.styleFrom(
+                backgroundColor: firstColor,
+                minimumSize: const Size(0, 44),
+                maximumSize: const Size(220, 52),
+              ),
+            ),
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
-          child: FilledButton.icon(
-            onPressed: secondOnPressed,
-            icon: Icon(secondIcon),
-            label: Text(secondLabel),
-            style: FilledButton.styleFrom(backgroundColor: secondColor),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 220),
+            child: FilledButton.icon(
+              onPressed: secondOnPressed,
+              icon: Icon(secondIcon),
+              label: Text(secondLabel),
+              style: FilledButton.styleFrom(
+                backgroundColor: secondColor,
+                minimumSize: const Size(0, 44),
+                maximumSize: const Size(220, 52),
+              ),
+            ),
           ),
         ),
       ],
@@ -705,6 +730,7 @@ class _CommentsSection extends StatelessWidget {
             if (comments.isEmpty) const Text('Aún no hay comentarios.'),
             if (comments.isNotEmpty)
               ...comments.map((ContractComment comment) {
+                final DateTime? createdAt = comment.createdAt;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: Column(
@@ -717,9 +743,9 @@ class _CommentsSection extends StatelessWidget {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(width: AppSpacing.xs),
-                          if (comment.createdAt != null)
+                          if (createdAt != null)
                             Text(
-                              '· ${comment.createdAt!.day}/${comment.createdAt!.month}/${comment.createdAt!.year}',
+                              '· ${createdAt.day}/${createdAt.month}/${createdAt.year}',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey,
@@ -786,17 +812,23 @@ class _PhotosSection extends StatelessWidget {
             if (photos.isNotEmpty)
               Column(
                 children: photos.map((ContractPhoto photo) {
+                  final DateTime? createdAt = photo.createdAt;
+                  final String authorName = photo.by?.nombre ?? 'Usuario';
+                  final String dateLabel = createdAt != null
+                      ? ' · ${createdAt.day}/${createdAt.month}/${createdAt.year}'
+                      : '';
+
                   return Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Image.network(photo.url, fit: BoxFit.cover),
+                        if ((photo.url).isNotEmpty) Image.network(photo.url, fit: BoxFit.cover),
                         const SizedBox(height: AppSpacing.xs),
-                        Text(photo.description),
-                        if (photo.by != null || photo.createdAt != null)
+                        if ((photo.description).isNotEmpty) Text(photo.description),
+                        if (photo.by != null || createdAt != null)
                           Text(
-                            '${photo.by?.nombre ?? 'Usuario'}${photo.createdAt != null ? ' · ${photo.createdAt!.day}/${photo.createdAt!.month}/${photo.createdAt!.year}' : ''}',
+                            '$authorName$dateLabel',
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.grey,

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../data/models/offer.dart';
+import '../../data/models/offer_status.dart';
 import '../../data/repositories/job_posting_repository.dart';
 import 'my_offers_status.dart';
 
@@ -28,7 +29,10 @@ class MyOffersViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _offers = await _jobPostingRepository.getMyOffers();
+      final allOffers = await _jobPostingRepository.getMyOffers();
+      // El backend solo desactiva (status → inactive), no elimina.
+      // Filtramos las inactivas para que no reaparezcan al recargar.
+      _offers = allOffers.where((o) => o.status == OfferStatus.active).toList();
       _status = MyOffersStatus.loaded;
     } catch (e) {
       _errorMessage = e.toString();
@@ -53,6 +57,24 @@ class MyOffersViewModel extends ChangeNotifier {
           // el próximo loadMyOffers() la corrige.
         }
       }
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _deactivatingIds.remove(offerId);
+      notifyListeners();
+    }
+  }
+
+  // NEW: Delete offer permanently
+  Future<bool> delete(String offerId) async {
+    _deactivatingIds.add(offerId);
+    notifyListeners();
+    try {
+      await _jobPostingRepository.deleteOffer(offerId);
+      _offers.removeWhere((o) => o.id == offerId);
       return true;
     } catch (e) {
       _errorMessage = e.toString();
