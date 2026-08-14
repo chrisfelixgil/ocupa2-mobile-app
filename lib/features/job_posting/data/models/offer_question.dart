@@ -1,9 +1,9 @@
 /// Tipos de pregunta soportados por el backend.
-/// AJUSTAR si el swagger define un enum distinto (ej. 'select', 'boolean', etc).
 class OfferQuestionType {
   static const text = 'text';
+  static const date = 'date';
   static const select = 'select';
-  static const boolean = 'boolean';
+  static const check = 'check';
 }
 
 class OfferQuestion {
