@@ -1,0 +1,242 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:ocupa2/core/network/api_exception.dart';
+import 'package:ocupa2/core/session/session_event_bus.dart';
+import 'package:ocupa2/features/auth/presentation/viewmodels/auth_action_status.dart';
+import 'package:ocupa2/features/auth/presentation/viewmodels/auth_status.dart';
+import 'package:ocupa2/features/auth/presentation/viewmodels/auth_view_model.dart';
+import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.dart';
+
+import '../../../../helpers/fake_auth_repository.dart';
+
+void main() {
+  group('AuthViewModel', () {
+    late FakeAuthRepository repository;
+    late SessionEventBus eventBus;
+    late SessionViewModel sessionViewModel;
+    late AuthViewModel authViewModel;
+
+    setUp(() {
+      repository = FakeAuthRepository(currentUser: buildTestUser());
+
+      eventBus = SessionEventBus();
+
+      sessionViewModel = SessionViewModel(
+        authRepository: repository,
+        sessionEventBus: eventBus,
+      );
+
+      authViewModel = AuthViewModel(
+        authRepository: repository,
+        sessionViewModel: sessionViewModel,
+      );
+    });
+
+    tearDown(() {
+      authViewModel.dispose();
+      sessionViewModel.dispose();
+      eventBus.dispose();
+    });
+
+    test('inicia en estado idle', () {
+      expect(authViewModel.status, AuthActionStatus.idle);
+      expect(authViewModel.errorMessage, isNull);
+      expect(authViewModel.successMessage, isNull);
+    });
+
+    test('login exitoso actualiza la sesión', () async {
+      final bool result = await authViewModel.login(
+        email: 'usuario@itla.edu.do',
+        password: 'clave123',
+      );
+
+      expect(result, isTrue);
+      expect(authViewModel.status, AuthActionStatus.success);
+      expect(sessionViewModel.status, AuthStatus.authenticated);
+      expect(sessionViewModel.user, same(repository.currentUser));
+      expect(repository.loginCalls, 1);
+      expect(repository.lastLoginRequest?.email, 'usuario@itla.edu.do');
+    });
+
+    test('registro exitoso actualiza la sesión', () async {
+      final bool result = await authViewModel.register(
+        email: 'usuario@itla.edu.do',
+        firstName: 'Christian',
+        lastName: 'Gil',
+        password: 'clave123',
+        referralMatricula: '20121036',
+      );
+
+      expect(result, isTrue);
+      expect(authViewModel.status, AuthActionStatus.success);
+      expect(sessionViewModel.status, AuthStatus.authenticated);
+      expect(repository.registerCalls, 1);
+      expect(repository.lastRegisterRequest?.referralMatricula, '20121036');
+    });
+
+    test('completar perfil actualiza el usuario de la sesión', () async {
+      repository.currentUser = buildTestUser(profileCompleted: false);
+      repository.completedProfileUser = buildTestUser();
+      sessionViewModel.setAuthenticatedUser(repository.currentUser);
+
+      final bool result = await authViewModel.completeProfile(
+        firstName: 'Christian',
+        lastName: 'Gil',
+        cedula: '40212345678',
+        gender: 'masculino',
+        birthDate: DateTime(2004, 5, 17),
+      );
+
+      expect(result, isTrue);
+      expect(repository.completeProfileCalls, 1);
+      expect(
+        repository.lastCompleteProfileRequest?.birthDate,
+        DateTime(2004, 5, 17),
+      );
+      expect(sessionViewModel.user?.profileCompleted, isTrue);
+    });
+
+    test(
+      'mantiene el perfil pendiente cuando el API rechaza los datos',
+      () async {
+        repository.currentUser = buildTestUser(profileCompleted: false);
+        repository.completeProfileError = const ApiException(
+          type: ApiExceptionType.validation,
+          statusCode: 422,
+          message: 'Los datos del perfil no son válidos.',
+        );
+        sessionViewModel.setAuthenticatedUser(repository.currentUser);
+
+        final bool result = await authViewModel.completeProfile(
+          firstName: 'Christian',
+          lastName: 'Gil',
+          cedula: '40212345678',
+          gender: 'masculino',
+          birthDate: DateTime(2004, 5, 17),
+        );
+
+        expect(result, isFalse);
+        expect(
+          authViewModel.errorMessage,
+          'Los datos del perfil no son válidos.',
+        );
+        expect(sessionViewModel.user?.profileCompleted, isFalse);
+      },
+    );
+
+    test('login incorrecto muestra error del API', () async {
+      repository.loginError = const ApiException(
+        type: ApiExceptionType.unauthorized,
+        statusCode: 401,
+        message: 'Correo o clave incorrectos.',
+      );
+
+      final bool result = await authViewModel.login(
+        email: 'usuario@itla.edu.do',
+        password: 'incorrecta',
+      );
+
+      expect(result, isFalse);
+      expect(authViewModel.status, AuthActionStatus.error);
+      expect(authViewModel.errorMessage, 'Correo o clave incorrectos.');
+      expect(sessionViewModel.user, isNull);
+    });
+
+    test('recuperación muestra el mensaje del servidor', () async {
+      final bool result = await authViewModel.forgotPassword(
+        email: 'usuario@itla.edu.do',
+        referralMatricula: '20121036',
+      );
+
+      expect(result, isTrue);
+      expect(authViewModel.status, AuthActionStatus.success);
+      expect(authViewModel.successMessage, contains('clave temporal'));
+      expect(repository.forgotPasswordCalls, 1);
+    });
+
+    test('registro duplicado muestra error de conflicto', () async {
+      repository.registerError = const ApiException(
+        type: ApiExceptionType.conflict,
+        statusCode: 409,
+        message: 'El correo ya está registrado.',
+      );
+
+      final bool result = await authViewModel.register(
+        email: 'usuario@itla.edu.do',
+        firstName: 'Christian',
+        lastName: 'Gil',
+        password: 'clave123',
+        referralMatricula: '20121036',
+      );
+
+      expect(result, isFalse);
+      expect(authViewModel.status, AuthActionStatus.error);
+      expect(authViewModel.errorMessage, 'El correo ya está registrado.');
+    });
+
+    test('cambia la contraseña y muestra mensaje del servidor', () async {
+      sessionViewModel.setAuthenticatedUser(
+        repository.currentUser,
+        requirePasswordChange: true,
+      );
+
+      final bool result = await authViewModel.changePassword(
+        password: 'nuevaClave123',
+      );
+
+      expect(result, isTrue);
+      expect(authViewModel.status, AuthActionStatus.success);
+      expect(authViewModel.successMessage, 'Clave actualizada.');
+      expect(repository.changePasswordCalls, 1);
+      expect(repository.lastChangePasswordRequest?.password, 'nuevaClave123');
+      expect(sessionViewModel.requiresPasswordChange, isFalse);
+    });
+
+    test(
+      'login con recuperación marca cambio de contraseña obligatorio',
+      () async {
+        final bool result = await authViewModel.login(
+          email: 'usuario@itla.edu.do',
+          password: 'EC8C71C6',
+          requirePasswordChange: true,
+        );
+
+        expect(result, isTrue);
+        expect(sessionViewModel.requiresPasswordChange, isTrue);
+      },
+    );
+
+    test('muestra error cuando falla el cambio de contraseña', () async {
+      repository.changePasswordError = const ApiException(
+        type: ApiExceptionType.validation,
+        statusCode: 422,
+        message: 'La contraseña no cumple los requisitos.',
+      );
+
+      final bool result = await authViewModel.changePassword(
+        password: 'nuevaClave123',
+      );
+
+      expect(result, isFalse);
+      expect(authViewModel.status, AuthActionStatus.error);
+      expect(
+        authViewModel.errorMessage,
+        'La contraseña no cumple los requisitos.',
+      );
+    });
+
+    test('resetFeedback limpia los mensajes', () async {
+      await authViewModel.forgotPassword(
+        email: 'usuario@itla.edu.do',
+        referralMatricula: '20121036',
+      );
+
+      expect(authViewModel.successMessage, isNotNull);
+
+      authViewModel.resetFeedback();
+
+      expect(authViewModel.status, AuthActionStatus.idle);
+      expect(authViewModel.successMessage, isNull);
+      expect(authViewModel.errorMessage, isNull);
+    });
+  });
+}

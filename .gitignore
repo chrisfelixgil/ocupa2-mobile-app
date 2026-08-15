@@ -87,3 +87,6 @@ ehthumbs.db
 
 # --- Cursor (cache local; .cursorrules si se versiona) ---
 .cursor/
+
+# --- Bundles temporales usados para compartir cambios de Claude ---
+*.bundle
