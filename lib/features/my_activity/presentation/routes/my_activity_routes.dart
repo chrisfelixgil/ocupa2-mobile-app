@@ -44,7 +44,15 @@ List<RouteBase> myActivityRoutes() {
     GoRoute(
       path: RoutePaths.activityHub,
       name: AppRouteNames.activityHub,
-      builder: (_, _) => const ActivityHubView(),
+      builder: (BuildContext context, GoRouterState state) {
+        final String tab = state.uri.queryParameters['tab'] ?? '';
+        final int initialTab = switch (tab) {
+          'offers' => 1,
+          'contracts' => 2,
+          _ => 0,
+        };
+        return ActivityHubView(initialTab: initialTab);
+      },
     ),
     GoRoute(
       path: RoutePaths.profile,

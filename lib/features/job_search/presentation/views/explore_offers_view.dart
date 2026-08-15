@@ -328,7 +328,10 @@ class _Body extends StatelessWidget {
                 const SizedBox(height: AppSpacing.md),
                 OutlinedButton(
                   onPressed: () {
-                    context.goNamed(AppRouteNames.jobPostingMyOffers);
+                    context.goNamed(
+                      AppRouteNames.activityHub,
+                      queryParameters: const <String, String>{'tab': 'offers'},
+                    );
                   },
                   child: const Text('Ver mis publicaciones'),
                 ),

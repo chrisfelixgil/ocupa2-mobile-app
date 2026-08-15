@@ -152,7 +152,12 @@ class SessionReadyView extends StatelessWidget {
                   OutlinedButton.icon(
                     key: const Key('open_my_offers_button'),
                     onPressed: () {
-                      context.goNamed(AppRouteNames.jobPostingMyOffers);
+                      context.goNamed(
+                        AppRouteNames.activityHub,
+                        queryParameters: const <String, String>{
+                          'tab': 'offers',
+                        },
+                      );
                     },
                     icon: const Icon(Icons.work_outline_rounded),
                     label: const Text('Mis ofertas'),

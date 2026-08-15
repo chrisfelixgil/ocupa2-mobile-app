@@ -10,7 +10,9 @@ import 'package:ocupa2/features/my_activity/presentation/views/my_offers_view.da
 const Color _muted = Color(0xFF64748B);
 
 class ActivityHubView extends StatefulWidget {
-  const ActivityHubView({super.key});
+  const ActivityHubView({super.key, this.initialTab = 0});
+
+  final int initialTab;
 
   @override
   State<ActivityHubView> createState() => _ActivityHubViewState();
@@ -23,7 +25,11 @@ class _ActivityHubViewState extends State<ActivityHubView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTab.clamp(0, 2),
+    );
   }
 
   @override

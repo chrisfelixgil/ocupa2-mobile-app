@@ -992,6 +992,29 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     );
   }
 
+  Future<void> _showPaymentFailedDialog(String message) async {
+    if (!mounted) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Pago rechazado'),
+          content: Text(message),
+          actions: <Widget>[
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Entendido'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _showPublishSuccessDialog() async {
     await showDialog<void>(
       context: context,
@@ -1004,7 +1027,10 @@ class _CreateOfferViewState extends State<CreateOfferView> {
             if (!context.mounted) {
               return;
             }
-            context.goNamed(AppRouteNames.jobPostingMyOffers);
+            context.goNamed(
+              AppRouteNames.activityHub,
+              queryParameters: const <String, String>{'tab': 'offers'},
+            );
           },
           onClose: () => Navigator.of(dialogContext).pop(),
         );
@@ -1128,7 +1154,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       }
 
       if (!paymentOk) {
-        _showMessage(
+        await _showPaymentFailedDialog(
           paymentViewModel.errorMessage ??
               'El pago fue rechazado. Verifica los datos de la tarjeta '
                   'o utiliza otra tarjeta.',

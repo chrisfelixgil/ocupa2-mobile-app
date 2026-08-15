@@ -3,6 +3,7 @@ import 'package:ocupa2/core/network/api_exception.dart';
 
 import '../../data/models/payment.dart';
 import '../../data/models/payment_request.dart';
+import '../../data/models/payment_status.dart';
 import '../../data/repositories/payment_repository.dart';
 import 'make_payment_status.dart';
 
@@ -45,6 +46,16 @@ class MakePaymentViewModel extends ChangeNotifier {
         ),
       );
 
+      if (_payment!.status != PaymentStatus.completed) {
+        final String? reason = _payment!.declineReason?.trim();
+        _errorMessage = (reason != null && reason.isNotEmpty)
+            ? reason
+            : _defaultDeclineMessage(_payment!.status);
+        _status = MakePaymentStatus.error;
+        notifyListeners();
+        return false;
+      }
+
       _status = MakePaymentStatus.success;
       notifyListeners();
 
@@ -64,5 +75,13 @@ class MakePaymentViewModel extends ChangeNotifier {
 
       return false;
     }
+  }
+
+  String _defaultDeclineMessage(PaymentStatus status) {
+    if (status == PaymentStatus.pending) {
+      return 'El pago quedó pendiente. Inténtalo de nuevo en unos minutos.';
+    }
+    return 'El pago fue rechazado. Verifica los datos de la tarjeta '
+        'o utiliza otra tarjeta.';
   }
 }
