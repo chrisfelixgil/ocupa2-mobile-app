@@ -31,6 +31,11 @@ class JobPostingOfferDetailViewModel extends ChangeNotifier {
 
   List<Application> get applicants => _applicants;
 
+  bool get hasWinner => _applicants.any(
+        (Application applicant) =>
+            applicant.status.toLowerCase().trim() == 'winner',
+      );
+
   bool _isUpdatingApplicant = false;
 
   bool get isUpdatingApplicant => _isUpdatingApplicant;
@@ -76,7 +81,22 @@ class JobPostingOfferDetailViewModel extends ChangeNotifier {
       );
 
       _applicants = _applicants.map((Application item) {
-        return item.id == updated.id ? updated : item;
+        if (item.id != updated.id) {
+          return item;
+        }
+
+        return item.copyWith(
+          status: updated.status,
+          comment: updated.comment ?? item.comment,
+          rating: updated.rating ?? item.rating,
+          applicantFirstName:
+              updated.applicantFirstName ?? item.applicantFirstName,
+          applicantLastName:
+              updated.applicantLastName ?? item.applicantLastName,
+          applicantExperiences: updated.applicantExperiences.isNotEmpty
+              ? updated.applicantExperiences
+              : item.applicantExperiences,
+        );
       }).toList();
 
       _isUpdatingApplicant = false;

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-
 import '../viewmodels/make_payment_status.dart';
 import '../viewmodels/make_payment_view_model.dart';
 
@@ -39,8 +38,6 @@ class _MakePaymentViewState extends State<MakePaymentView> {
 
     final viewModel = context.read<MakePaymentViewModel>();
     final ok = await viewModel.pay(
-      amount: double.tryParse(_amountController.text.trim()) ?? 0,
-      currency: _currencyController.text.trim(),
       cardNumber: '4242424242424242',
       cvv: '123',
       expMonth: 12,
@@ -49,9 +46,9 @@ class _MakePaymentViewState extends State<MakePaymentView> {
     );
     if (!mounted) return;
     if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pago simulado realizado')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Pago simulado realizado')));
       Navigator.of(context).pop();
     }
   }
@@ -75,8 +72,7 @@ class _MakePaymentViewState extends State<MakePaymentView> {
                   labelText: 'Monto',
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Requerido' : null,
+                validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -85,8 +81,7 @@ class _MakePaymentViewState extends State<MakePaymentView> {
                   labelText: 'Moneda',
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Requerido' : null,
+                validator: (v) => (v == null || v.isEmpty) ? 'Requerido' : null,
               ),
               const SizedBox(height: 20),
               if (viewModel.status == MakePaymentStatus.error &&

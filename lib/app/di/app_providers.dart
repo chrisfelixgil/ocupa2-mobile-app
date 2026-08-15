@@ -267,15 +267,30 @@ class AppProviders extends StatelessWidget {
           },
         ),
 
+        // JOB POSTING debe ir antes de ExploreOffersViewModel:
+        // ese VM lee JobPostingRepository en su create().
+        Provider<JobPostingService>(
+          create: (BuildContext context) {
+            return JobPostingServiceImpl(
+              apiClient: context.read<ApiClient>(),
+            );
+          },
+        ),
+
+        Provider<JobPostingRepository>(
+          create: (BuildContext context) {
+            return JobPostingRepositoryImpl(
+              jobPostingService: context.read<JobPostingService>(),
+            );
+          },
+        ),
+
         ChangeNotifierProvider<ExploreOffersViewModel>(
           create: (BuildContext context) {
             return ExploreOffersViewModel(
-              jobSearchRepository:
-                  context.read<JobSearchRepository>(),
-              applicationRepository:
-                  context.read<ApplicationRepository>(),
-              jobPostingRepository:
-                  context.read<JobPostingRepository>(),
+              jobSearchRepository: context.read<JobSearchRepository>(),
+              applicationRepository: context.read<ApplicationRepository>(),
+              jobPostingRepository: context.read<JobPostingRepository>(),
             );
           },
         ),
@@ -303,24 +318,6 @@ class AppProviders extends StatelessWidget {
             return ContractsViewModel(
               contractRepository:
                   context.read<ContractRepository>(),
-            );
-          },
-        ),
-
-        // JOB POSTING
-        Provider<JobPostingService>(
-          create: (BuildContext context) {
-            return JobPostingServiceImpl(
-              apiClient: context.read<ApiClient>(),
-            );
-          },
-        ),
-
-        Provider<JobPostingRepository>(
-          create: (BuildContext context) {
-            return JobPostingRepositoryImpl(
-              jobPostingService:
-                  context.read<JobPostingService>(),
             );
           },
         ),

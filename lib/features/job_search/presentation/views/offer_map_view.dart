@@ -122,11 +122,26 @@ class _OfferMapViewState extends State<OfferMapView> {
               bottom: AppSpacing.md,
               child: _OfferPreviewCard(
                 offer: _selectedOffer!,
-                onTap: () {
-                  context.pushNamed(
+                onTap: () async {
+                  final String offerId = _selectedOffer!.id;
+                  final Object? applied = await context.pushNamed(
                     AppRouteNames.jobSearchOfferDetail,
-                    pathParameters: <String, String>{'id': _selectedOffer!.id},
+                    pathParameters: <String, String>{'id': offerId},
                   );
+
+                  if (!mounted) {
+                    return;
+                  }
+
+                  final ExploreOffersViewModel viewModel =
+                      context.read<ExploreOffersViewModel>();
+
+                  if (applied == true) {
+                    _selectOffer(null);
+                    viewModel.hideOffer(offerId);
+                  }
+
+                  await viewModel.load();
                 },
               ),
             ),

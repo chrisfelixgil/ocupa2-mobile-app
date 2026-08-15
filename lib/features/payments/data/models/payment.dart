@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+import '../payment_datetime.dart';
 import 'payment_status.dart';
 
 class Payment {
@@ -34,9 +37,7 @@ class Payment {
       id: (json['id'] ?? json['_id'])?.toString() ?? '',
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
       currency: json['currency']?.toString() ?? 'DOP',
-      status: paymentStatusFromString(
-        json['status']?.toString(),
-      ),
+      status: paymentStatusFromString(json['status']?.toString()),
       concept: json['concept']?.toString(),
       cardLast4: json['cardLast4']?.toString(),
       cardholder: json['cardholder']?.toString(),
@@ -44,11 +45,24 @@ class Payment {
       consumed: json['consumed'] as bool? ?? false,
       offerId: json['offerId']?.toString(),
       declineReason: json['declineReason']?.toString(),
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(
-              json['createdAt'].toString(),
-            )
-          : null,
+      createdAt: _parseCreatedAt(json['createdAt']),
     );
+  }
+
+  static DateTime? _parseCreatedAt(Object? rawValue) {
+    final String? raw = rawValue?.toString();
+    final DateTime? parsed = PaymentDateTime.parse(raw);
+
+    assert(() {
+      debugPrint(
+        '[Payment] createdAt raw="$raw" '
+        'isUtc=${parsed?.isUtc} '
+        'timeZoneOffset=${parsed?.timeZoneOffset} '
+        'parsed=$parsed',
+      );
+      return true;
+    }());
+
+    return parsed;
   }
 }

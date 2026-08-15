@@ -1,31 +1,29 @@
+/// Body de POST /payments según OpenAPI.
+///
+/// No incluye amount ni currency: el cobro simulado es siempre 1.00 USD.
 class PaymentRequest {
   const PaymentRequest({
-    required this.amount,
-    required this.currency,
     required this.cardNumber,
     required this.cvv,
     required this.expMonth,
     required this.expYear,
-    required this.cardholder,
+    this.cardholder,
   });
 
-  final double amount;
-  final String currency;
   final String cardNumber;
   final String cvv;
   final int expMonth;
   final int expYear;
-  final String cardholder;
+  final String? cardholder;
 
   Map<String, dynamic> toJson() {
-    return {
-      'amount': amount,
-      'currency': currency,
+    return <String, dynamic>{
       'cardNumber': cardNumber,
       'cvv': cvv,
       'expMonth': expMonth,
       'expYear': expYear,
-      'cardholder': cardholder,
+      if (cardholder != null && cardholder!.trim().isNotEmpty)
+        'cardholder': cardholder!.trim(),
     };
   }
 }

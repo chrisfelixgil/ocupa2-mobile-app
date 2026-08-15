@@ -1,8 +1,8 @@
 // views/payment_detail_view.dart
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import 'package:ocupa2/features/payments/data/models/payment.dart';
+import 'package:ocupa2/features/payments/data/payment_datetime.dart';
 
 class PaymentDetailView extends StatelessWidget {
   final Payment payment;
@@ -11,9 +11,7 @@ class PaymentDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formattedDate = payment.createdAt != null
-        ? DateFormat('dd/MM/yyyy hh:mm a').format(payment.createdAt!)
-        : 'No disponible';
+    final formattedDate = PaymentDateTime.formatDisplay(payment.createdAt);
     final formattedAmount =
         '${payment.amount.toStringAsFixed(2)} ${payment.currency}';
 
@@ -67,9 +65,7 @@ class _DetailRow extends StatelessWidget {
         children: [
           Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(width: 12),
-          Expanded(
-            child: Text(value, textAlign: TextAlign.right),
-          ),
+          Expanded(child: Text(value, textAlign: TextAlign.right)),
         ],
       ),
     );

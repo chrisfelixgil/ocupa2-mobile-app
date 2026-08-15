@@ -97,7 +97,7 @@ class _OfferDetailContentState extends State<_OfferDetailContent> {
 
     // Llamamos al método apply del viewModel
     await widget.viewModel.apply(
-      comment: values[_commentField] as String,
+      comment: (values[_commentField] as String).trim(),
       answers: answers,
     );
 
@@ -131,7 +131,7 @@ class _OfferDetailContentState extends State<_OfferDetailContent> {
 
       // Si el widget sigue montado, salimos de la pantalla de detalle
       if (mounted) {
-        Navigator.of(context).pop(); // cierra la vista de detalle
+        Navigator.of(context).pop(true);
       }
     }
     // Si falla, el error ya se muestra en el formulario (ver abajo)
@@ -199,10 +199,22 @@ class _OfferDetailContentState extends State<_OfferDetailContent> {
                   name: _commentField,
                   maxLines: 3,
                   enabled: !widget.viewModel.isSubmittingApplication,
-                  validator: AppValidators.requiredText('El comentario'),
+                  validator: (String? value) {
+                    final String text = value?.trim() ?? '';
+                    if (text.isEmpty) {
+                      return 'Explica por qué eres apto para este puesto. No dejes este espacio vacío.';
+                    }
+                    if (text.length < 20) {
+                      return 'Escribe un poco más: cuenta tu experiencia o habilidades para este puesto (mínimo 20 caracteres).';
+                    }
+                    return null;
+                  },
                   decoration: const InputDecoration(
                     labelText: '¿Por qué eres apto para este puesto?',
                     alignLabelWithHint: true,
+                    helperText:
+                        'Cuenta tu experiencia o habilidades. Mínimo 20 caracteres.',
+                    helperMaxLines: 2,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),

@@ -35,7 +35,18 @@ class ApplicationServiceImpl implements ApplicationService {
 
     return _parse(response, (Object? data) {
       final List<dynamic> items = data as List<dynamic>? ?? <dynamic>[];
-      return items.map(Application.fromJson).toList();
+      final List<Application> applications = <Application>[];
+
+      for (final Object? item in items) {
+        try {
+          applications.add(Application.fromJson(item));
+        } catch (_) {
+          // Una aplicación ilegible no debe tumbar el listado ni el
+          // filtro de explorar.
+        }
+      }
+
+      return applications;
     });
   }
 

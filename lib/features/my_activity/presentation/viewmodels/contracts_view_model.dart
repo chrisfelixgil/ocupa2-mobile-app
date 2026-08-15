@@ -14,7 +14,7 @@ class ContractsViewModel extends ChangeNotifier {
   ContractsStatus _status = ContractsStatus.idle;
   List<Contract> _contracts = const <Contract>[];
   String? _errorMessage;
-  String _selectedFilter = 'all'; // 'all', 'active', 'inactive'
+  String _selectedFilter = 'all'; // 'all', 'active', 'pending', 'closed'
 
   ContractsStatus get status => _status;
   List<Contract> get contracts => _filteredContracts;
@@ -23,10 +23,19 @@ class ContractsViewModel extends ChangeNotifier {
 
   List<Contract> get _filteredContracts {
     if (_selectedFilter == 'active') {
-      return _contracts.where((Contract c) => c.isActive).toList();
+      return _contracts
+          .where((Contract contract) => contract.isActive)
+          .toList();
     }
-    if (_selectedFilter == 'inactive') {
-      return _contracts.where((Contract c) => !c.isActive).toList();
+    if (_selectedFilter == 'pending') {
+      return _contracts
+          .where((Contract contract) => contract.isPending)
+          .toList();
+    }
+    if (_selectedFilter == 'closed') {
+      return _contracts
+          .where((Contract contract) => contract.isClosed)
+          .toList();
     }
     return _contracts;
   }
@@ -37,7 +46,8 @@ class ContractsViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _contracts = await _contractRepository.getMyContracts();
+      final List<Contract> incoming = await _contractRepository.getMyContracts();
+      _contracts = _preserveKnownTerms(incoming, _contracts);
       _status = ContractsStatus.success;
     } on ApiException catch (error) {
       _errorMessage = error.message;
@@ -50,6 +60,18 @@ class ContractsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refresh() async {
+    try {
+      final List<Contract> incoming = await _contractRepository.getMyContracts();
+      _contracts = _preserveKnownTerms(incoming, _contracts);
+      _status = ContractsStatus.success;
+      _errorMessage = null;
+      notifyListeners();
+    } catch (_) {
+      // Se mantiene la lista que ya está en pantalla.
+    }
+  }
+
   void setFilter(String filter) {
     if (_selectedFilter != filter) {
       _selectedFilter = filter;
@@ -58,9 +80,46 @@ class ContractsViewModel extends ChangeNotifier {
   }
 
   void updateContractInList(Contract updated) {
+    bool found = false;
     _contracts = _contracts.map((Contract item) {
-      return item.id == updated.id ? updated : item;
+      if (item.id != updated.id) {
+        return item;
+      }
+      found = true;
+      return updated.salary != null
+          ? updated
+          : updated.copyWith(
+              salary: item.salary,
+              currency: item.currency,
+              startDate: item.startDate,
+              duration: item.duration,
+            );
     }).toList();
+    if (!found) {
+      _contracts = <Contract>[updated, ..._contracts];
+    }
     notifyListeners();
+  }
+
+  List<Contract> _preserveKnownTerms(
+    List<Contract> incoming,
+    List<Contract> previous,
+  ) {
+    return incoming.map((Contract contract) {
+      if (contract.salary != null) {
+        return contract;
+      }
+      for (final Contract item in previous) {
+        if (item.id == contract.id && item.salary != null) {
+          return contract.copyWith(
+            salary: item.salary,
+            currency: item.currency,
+            startDate: item.startDate,
+            duration: item.duration,
+          );
+        }
+      }
+      return contract;
+    }).toList();
   }
 }

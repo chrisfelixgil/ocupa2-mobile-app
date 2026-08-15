@@ -12,6 +12,10 @@ class ContractParty {
   final String? email;
 
   factory ContractParty.fromJson(Object? json) {
+    if (json is String && json.trim().isNotEmpty) {
+      return ContractParty(id: 'unknown-party', nombre: json.trim());
+    }
+
     final Map<String, dynamic> map = requireJsonObject(
       json,
       context: 'Una parte del contrato',
@@ -28,10 +32,12 @@ class ContractParty {
         map['user'] is Map ? Map<String, dynamic>.from(map['user'] as Map) : null;
 
     final String resolvedId = asText(map['id']) ??
+        asText(map['_id']) ??
         asText(map['userId']) ??
         asText(map['contractorId']) ??
         asText(map['employeeId']) ??
         asText(nestedUser?['id']) ??
+        asText(nestedUser?['_id']) ??
         'unknown-party';
 
     final String? explicitName = asText(map['nombre']) ??
@@ -50,7 +56,7 @@ class ContractParty {
                 ? <String?>[firstName, lastName]
                     .where((String? value) => value != null && value.isNotEmpty)
                     .join(' ')
-                : 'Usuario';
+                : '';
 
     return ContractParty(
       id: resolvedId,
