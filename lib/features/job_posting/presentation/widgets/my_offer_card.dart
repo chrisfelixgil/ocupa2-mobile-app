@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../data/models/offer.dart';
-import '../../data/models/offer_status.dart';
 
 class MyOfferCard extends StatelessWidget {
   final Offer offer;
@@ -19,8 +18,6 @@ class MyOfferCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isActive = offer.status == OfferStatus.active;
-
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: ListTile(

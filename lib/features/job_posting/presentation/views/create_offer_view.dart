@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
@@ -811,13 +810,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     });
   }
 
-  // Update option text
-  void _updateOption(int questionIndex, int optionIndex, String value) {
-    setState(() {
-      _questions[questionIndex].optionControllers[optionIndex].text = value;
-    });
-  }
-
   String? _validateAdditionalQuestions() {
     for (final q in _questions) {
       if (!q.isValid) {
@@ -998,37 +990,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
         ],
       ),
     );
-  }
-
-  // ============================================================
-  // MODAL DE CONFIRMACIÓN DE PAGO
-  // ============================================================
-
-  Future<bool> _confirmPublicationFee() async {
-    final bool? confirmed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Costo de publicación'),
-          content: const Text(
-            'Publicar esta oferta tiene un costo de US\$1.00.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('Continuar al pago'),
-            ),
-          ],
-        );
-      },
-    );
-
-    return confirmed == true;
   }
 
   Future<void> _showPublishSuccessDialog() async {

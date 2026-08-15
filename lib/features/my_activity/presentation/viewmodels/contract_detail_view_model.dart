@@ -15,8 +15,8 @@ class ContractDetailViewModel extends ChangeNotifier {
   ContractDetailViewModel({
     required this._contractRepository,
     required this._uploadService,
-    ContractParty? currentUser,
-  }) : _currentUser = currentUser;
+    this._currentUser,
+  });
 
   final ContractRepository _contractRepository;
   final UploadService _uploadService;

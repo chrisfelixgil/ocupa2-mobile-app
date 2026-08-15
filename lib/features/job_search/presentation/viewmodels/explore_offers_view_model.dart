@@ -14,12 +14,10 @@ import 'package:ocupa2/features/my_activity/data/repositories/application_reposi
 /// datos y filtros.
 class ExploreOffersViewModel extends ChangeNotifier {
   ExploreOffersViewModel({
-    required JobSearchRepository jobSearchRepository,
-    required ApplicationRepository applicationRepository,
-    required JobPostingRepository jobPostingRepository,
-  })  : _jobSearchRepository = jobSearchRepository,
-        _applicationRepository = applicationRepository,
-        _jobPostingRepository = jobPostingRepository;
+    required this._jobSearchRepository,
+    required this._applicationRepository,
+    required this._jobPostingRepository,
+  });
 
   final JobSearchRepository _jobSearchRepository;
   final ApplicationRepository _applicationRepository;

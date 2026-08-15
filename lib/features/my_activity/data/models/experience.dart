@@ -42,7 +42,7 @@ class Experience {
         (map['jobTitle'] as String?) ??
         (map['position'] as String?);
 
-    final String? rawDescription = (map['description'] as String?) ??
+    final String rawDescription = (map['description'] as String?) ??
         (map['summary'] as String?) ??
         (map['details'] as String?) ??
         '';
@@ -68,7 +68,7 @@ class Experience {
     return Experience(
       id: (map['id'] as String?)?.trim() ?? 'experience-${DateTime.now().microsecondsSinceEpoch}',
       title: safeTitle,
-      description: rawDescription?.trim() ?? '',
+      description: rawDescription.trim(),
       jobTypeKey: (map['jobTypeKey'] as String?)?.trim(),
       certificateImage: safeImage,
       contractType: (map['contractType'] as String?)?.trim(),

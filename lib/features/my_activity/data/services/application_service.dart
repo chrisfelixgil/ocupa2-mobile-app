@@ -76,12 +76,12 @@ class ApplicationServiceImpl implements ApplicationService {
     String? duration,
   }) async {
     final Map<String, dynamic> body = <String, dynamic>{
-      if (rating != null) 'rating': rating,
-      if (status != null) 'status': status,
-      if (salary != null) 'salary': salary,
-      if (currency != null) 'currency': currency,
-      if (startDate != null) 'startDate': startDate,
-      if (duration != null) 'duration': duration,
+      'rating': ?rating,
+      'status': ?status,
+      'salary': ?salary,
+      'currency': ?currency,
+      'startDate': ?startDate,
+      'duration': ?duration,
     };
 
     final Object? response = await _apiClient.patch(
