@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ocupa2/app/router/app_routes.dart';
+import 'package:ocupa2/core/widgets/app_bottom_nav.dart';
 import 'package:ocupa2/app/theme/app_colors.dart';
 import 'package:ocupa2/app/theme/app_typography.dart';
 import 'package:ocupa2/features/auth/data/models/user.dart';
@@ -281,7 +282,7 @@ class _HomeViewState extends State<HomeView> {
           },
         ),
       ),
-      bottomNavigationBar: const _HomeBottomNav(),
+      bottomNavigationBar: const AppBottomNav(selected: AppBottomNavTab.home),
     );
   }
 }
@@ -739,122 +740,6 @@ class _VideoRow extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HomeBottomNav extends StatelessWidget {
-  const _HomeBottomNav();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: <Widget>[
-              const _NavItem(
-                icon: Icons.home_outlined,
-                label: 'Inicio',
-                selected: true,
-              ),
-              _NavItem(
-                icon: Icons.search,
-                label: 'Explorar',
-                onTap: () {
-                  context.pushNamed(AppRouteNames.jobSearchExplore);
-                },
-              ),
-              _NavItem(
-                icon: Icons.add,
-                label: 'Publicar',
-                prominent: true,
-                onTap: () {
-                  context.pushNamed(AppRouteNames.jobPostingCreate);
-                },
-              ),
-              _NavItem(
-                icon: Icons.history,
-                label: 'Actividad',
-                onTap: () {
-                  context.pushNamed(AppRouteNames.activityHub);
-                },
-              ),
-              _NavItem(
-                icon: Icons.person_outline,
-                label: 'Perfil',
-                onTap: () {
-                  context.pushNamed(AppRouteNames.profile);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    this.selected = false,
-    this.prominent = false,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final bool prominent;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color color = selected ? AppColors.primary : AppColors.text;
-
-    return InkWell(
-      onTap: onTap,
-      child: SizedBox(
-        width: 64,
-        height: 64,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            if (prominent)
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, size: 24, color: AppColors.primary),
-              )
-            else
-              Icon(icon, size: 22, color: color),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: selected
-                    ? AppTypography.medium
-                    : AppTypography.regular,
-              ),
-            ),
-          ],
         ),
       ),
     );
