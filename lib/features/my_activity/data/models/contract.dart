@@ -10,6 +10,7 @@ class Contract {
     required this.status,
     this.offerId,
     this.jobTypeName,
+    this.offerDescription,
     this.contratante,
     this.contratado,
     this.salary,
@@ -30,6 +31,7 @@ class Contract {
   final String status;
   final String? offerId;
   final String? jobTypeName;
+  final String? offerDescription;
   final ContractParty? contratante;
   final ContractParty? contratado;
   final num? salary;
@@ -104,6 +106,7 @@ class Contract {
       status: status ?? this.status,
       offerId: offerId,
       jobTypeName: jobTypeName,
+      offerDescription: offerDescription,
       contratante: contratante,
       contratado: contratado,
       salary: salary ?? this.salary,
@@ -202,6 +205,12 @@ class Contract {
       resolvedStatus = 'pending';
     }
 
+    final Map<String, dynamic>? offerMap = map['offer'] is Map<String, dynamic>
+        ? map['offer'] as Map<String, dynamic>
+        : map['offer'] is Map
+            ? Map<String, dynamic>.from(map['offer'] as Map)
+            : null;
+
     return Contract(
       id: asText(map['id']) ?? asText(map['_id']) ?? 'unknown-contract',
       myRole: normalizeRole(
@@ -212,8 +221,14 @@ class Contract {
             'contratante',
       ),
       status: resolvedStatus,
-      offerId: asText(map['offerId']),
-      jobTypeName: asText(map['jobTypeName']) ?? asText(map['title']),
+      offerId: asText(map['offerId']) ?? asText(offerMap?['id']),
+      jobTypeName: asText(map['jobTypeName']) ??
+          asText(map['title']) ??
+          asText(offerMap?['jobTypeName']) ??
+          asText(offerMap?['title']),
+      offerDescription: asText(map['description']) ??
+          asText(map['offerDescription']) ??
+          asText(offerMap?['description']),
       contratante: parseParty(map['contratante'] ?? map['employer'] ?? map['contractor']),
       contratado: parseParty(map['contratado'] ?? map['employee'] ?? map['worker'] ?? map['candidate']),
       salary: salaryVal,

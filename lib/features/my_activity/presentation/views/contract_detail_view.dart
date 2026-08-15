@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ocupa2/app/theme/app_colors.dart';
 import 'package:ocupa2/app/theme/app_spacing.dart';
+import 'package:ocupa2/app/theme/app_typography.dart';
 import 'package:ocupa2/features/my_activity/data/models/contract.dart';
 import 'package:ocupa2/features/my_activity/data/models/contract_comment.dart';
 import 'package:ocupa2/features/my_activity/data/models/contract_photo.dart';
@@ -10,12 +11,39 @@ import 'package:ocupa2/features/my_activity/presentation/viewmodels/contracts_st
 import 'package:ocupa2/features/my_activity/presentation/viewmodels/contracts_view_model.dart';
 import 'package:provider/provider.dart';
 
+const Color _successGreen = Color(0xFF16A34A);
+const Color _discardRed = Color(0xFFEF4444);
+
+const List<String> _months = <String>[
+  'Ene',
+  'Feb',
+  'Mar',
+  'Abr',
+  'May',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dic',
+];
+
 void _showContractMessage(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
 String _formatContractDate(DateTime date) {
-  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  return '${date.day.toString().padLeft(2, '0')} ${_months[date.month - 1]} ${date.year}';
+}
+
+String _formatContractDateTime(DateTime date) {
+  final int hour = date.hour > 12
+      ? date.hour - 12
+      : (date.hour == 0 ? 12 : date.hour);
+  final String minute = date.minute.toString().padLeft(2, '0');
+  final String suffix = date.hour >= 12 ? 'PM' : 'AM';
+  return '${_formatContractDate(date)}, $hour:$minute $suffix';
 }
 
 String _toApiDate(DateTime date) {
@@ -23,6 +51,34 @@ String _toApiDate(DateTime date) {
   final String month = date.month.toString().padLeft(2, '0');
   final String day = date.day.toString().padLeft(2, '0');
   return '$year-$month-$day';
+}
+
+String _paymentLabel(Contract contract) {
+  if (contract.salary == null) {
+    return 'A convenir';
+  }
+  final String amount = _group(contract.salary!.round());
+  final String currency = (contract.currency ?? 'DOP').toUpperCase();
+  if (currency == 'USD' || currency == 'US\$') {
+    return 'US\$$amount';
+  }
+  return 'RD\$$amount';
+}
+
+String _group(int value) {
+  final String digits = value.abs().toString();
+  final StringBuffer buffer = StringBuffer();
+  for (int i = 0; i < digits.length; i++) {
+    final int remaining = digits.length - i;
+    if (i > 0 && remaining % 3 == 0) {
+      buffer.write(',');
+    }
+    buffer.write(digits[i]);
+  }
+  if (value < 0) {
+    return '-$buffer';
+  }
+  return buffer.toString();
 }
 
 class ContractDetailView extends StatefulWidget {
@@ -43,15 +99,81 @@ class _ContractDetailViewState extends State<ContractDetailView> {
 
   @override
   Widget build(BuildContext context) {
-    final ContractDetailViewModel viewModel = context
-        .watch<ContractDetailViewModel>();
+    final ContractDetailViewModel viewModel =
+        context.watch<ContractDetailViewModel>();
+    final Contract? contract = viewModel.contract;
 
-    Widget body;
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 20, 12),
+              child: Row(
+                children: <Widget>[
+                  Material(
+                    color: AppColors.surface,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: const BorderSide(color: AppColors.border),
+                    ),
+                    child: InkWell(
+                      onTap: () => Navigator.of(context).pop(),
+                      borderRadius: BorderRadius.circular(10),
+                      child: const SizedBox(
+                        width: 32,
+                        height: 32,
+                        child: Icon(
+                          Icons.arrow_back,
+                          size: 16,
+                          color: AppColors.text,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Detalle del contrato',
+                      style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 18,
+                        fontWeight: AppTypography.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(child: _buildBody(context, viewModel)),
+            if (viewModel.status == ContractsStatus.success && contract != null)
+              _ContractFooter(
+                contract: contract,
+                isSaving: viewModel.isSaving,
+                onSetTerms: () =>
+                    _showSetTermsSheet(context, viewModel, contract),
+                onAccept: () => _accept(context, viewModel),
+                onReject: () => _reject(context, viewModel),
+                onCancel: () => _showCancelDialog(context, viewModel),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(
+    BuildContext context,
+    ContractDetailViewModel viewModel,
+  ) {
     if (viewModel.status == ContractsStatus.loading ||
         viewModel.status == ContractsStatus.idle) {
-      body = const Center(child: CircularProgressIndicator());
-    } else if (viewModel.status == ContractsStatus.error) {
-      body = _ErrorState(
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (viewModel.status == ContractsStatus.error) {
+      return _ErrorState(
         message: viewModel.errorMessage,
         onRetry: () {
           final String? contractId = viewModel.contract?.id;
@@ -60,14 +182,54 @@ class _ContractDetailViewState extends State<ContractDetailView> {
           }
         },
       );
-    } else {
-      body = _buildContent(context, viewModel);
     }
+    return _buildContent(context, viewModel);
+  }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Detalle del contrato')),
-      body: body,
-    );
+  Future<void> _accept(
+    BuildContext context,
+    ContractDetailViewModel viewModel,
+  ) async {
+    final bool accepted = await viewModel.acceptContract();
+    if (!context.mounted) {
+      return;
+    }
+    if (accepted) {
+      final Contract? updated = viewModel.contract;
+      if (updated != null) {
+        context.read<ContractsViewModel>().updateContractInList(updated);
+      }
+      _showContractMessage(
+        context,
+        'Contrato aceptado. El estado ahora es activo.',
+      );
+    } else {
+      _showMessage(
+        context,
+        viewModel.errorMessage ?? 'No fue posible aceptar el contrato.',
+      );
+    }
+  }
+
+  Future<void> _reject(
+    BuildContext context,
+    ContractDetailViewModel viewModel,
+  ) async {
+    final bool rejected = await viewModel.rejectContract();
+    if (!context.mounted) {
+      return;
+    }
+    if (rejected) {
+      final Contract? updated = viewModel.contract;
+      if (updated != null) {
+        context.read<ContractsViewModel>().updateContractInList(updated);
+      }
+    } else {
+      _showMessage(
+        context,
+        viewModel.errorMessage ?? 'No fue posible rechazar el contrato.',
+      );
+    }
   }
 
   Widget _buildContent(
@@ -79,100 +241,50 @@ class _ContractDetailViewState extends State<ContractDetailView> {
       return const Center(child: Text('No se encontró el contrato.'));
     }
 
+    final String description = (contract.offerDescription ?? '').trim();
+    final String? firstComment = contract.comments.isNotEmpty
+        ? contract.comments.first.body.trim()
+        : null;
+
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       children: <Widget>[
-        _ContractHeader(contract: contract),
-        const SizedBox(height: AppSpacing.md),
-        _InfoCard(
-          title: 'Información básica',
-          children: <Widget>[
-            _InfoRow(label: 'Oferta', value: contract.displayTitle),
-            if (contract.otherParty != null)
-              _InfoRow(
-                label: contract.isContratante ? 'Contratado' : 'Contratante',
-                value: contract.otherParty?.nombre ?? 'Sin información',
-              ),
-            _InfoRow(label: 'Estado', value: contract.displayStatusLabel),
-            if (contract.salary != null)
-              _InfoRow(
-                label: 'Salario',
-                value: "${contract.currency ?? 'DOP'} ${contract.salary}",
-              ),
-            if (contract.startDate != null)
-              _InfoRow(
-                label: 'Inicio',
-                value: _formatContractDate(contract.startDate!),
-              ),
-            if ((contract.duration ?? '').isNotEmpty)
-              _InfoRow(label: 'Duración', value: contract.duration ?? 'Sin información'),
-            if (contract.acceptedAt != null)
-              _InfoRow(
-                label: 'Aceptado el',
-                value: _formatContractDate(contract.acceptedAt!),
-              ),
-            if (contract.cancelledAt != null)
-              _InfoRow(
-                label: 'Cancelado el',
-                value: _formatContractDate(contract.cancelledAt!),
-              ),
-            if ((contract.cancelJustification ?? '').isNotEmpty)
-              _InfoRow(
-                label: 'Justificación',
-                value: contract.cancelJustification ?? 'Sin información',
-              ),
-          ],
+        _StatusHero(contract: contract),
+        const SizedBox(height: 16),
+        const _SectionTitle('Trabajo'),
+        const SizedBox(height: 8),
+        _JobCard(
+          title: contract.displayTitle,
+          description: description,
         ),
-        const SizedBox(height: AppSpacing.md),
-        if (contract.isContratante && contract.isPending)
-          _PrimaryActionCard(
-            label: contract.hasTerms ? 'Editar términos' : 'Fijar términos',
-            icon: Icons.edit_rounded,
-            onPressed: () => _showSetTermsSheet(context, viewModel, contract),
-            isLoading: viewModel.isSaving,
-          ),
-        if (contract.isContratado && contract.isPending)
-          _ActionButtonsRow(
-            firstLabel: 'Aceptar',
-            firstIcon: Icons.check_rounded,
-            firstColor: AppColors.success,
-            firstOnPressed: viewModel.isSaving
-                ? null
-                : () async {
-                    final bool accepted = await viewModel.acceptContract();
-                    if (!context.mounted) return;
-                    if (accepted) {
-                      _showContractMessage(
-                        context,
-                        'Contrato aceptado. El estado ahora es activo.',
-                      );
-                    } else {
-                      _showMessage(
-                        context,
-                        viewModel.errorMessage ??
-                            'No fue posible aceptar el contrato.',
-                      );
-                    }
-                  },
-            secondLabel: 'Rechazar',
-            secondIcon: Icons.close_rounded,
-            secondColor: AppColors.error,
-            secondOnPressed: viewModel.isSaving
-                ? null
-                : () async {
-                    final bool rejected = await viewModel.rejectContract();
-                    if (!context.mounted) return;
-                    if (!rejected) {
-                      _showMessage(
-                        context,
-                        viewModel.errorMessage ??
-                            'No fue posible rechazar el contrato.',
-                      );
-                    }
-                  },
-          ),
+        const SizedBox(height: 16),
+        const _SectionTitle('Participantes'),
+        const SizedBox(height: 8),
+        _PartiesRow(contract: contract),
+        const SizedBox(height: 16),
+        const _SectionTitle('Términos del acuerdo'),
+        const SizedBox(height: 8),
+        _TermsCard(contract: contract),
+        const SizedBox(height: 16),
+        const _SectionTitle('Estado del proceso'),
+        const SizedBox(height: 8),
+        _TimelineCard(contract: contract),
+        if (!contract.isActive &&
+            firstComment != null &&
+            firstComment.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 16),
+          const _SectionTitle('Comentarios adicionales'),
+          const SizedBox(height: 8),
+          _QuotedComment(text: firstComment),
+        ],
+        if ((contract.cancelJustification ?? '').trim().isNotEmpty) ...<Widget>[
+          const SizedBox(height: 16),
+          const _SectionTitle('Justificación'),
+          const SizedBox(height: 8),
+          _QuotedComment(text: contract.cancelJustification!.trim()),
+        ],
         if (contract.isActive) ...<Widget>[
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
           _CommentsSection(
             comments: contract.comments,
             controller: _commentController,
@@ -181,7 +293,9 @@ class _ContractDetailViewState extends State<ContractDetailView> {
               final bool success = await viewModel.addComment(
                 _commentController.text,
               );
-              if (!context.mounted) return;
+              if (!context.mounted) {
+                return;
+              }
               if (success) {
                 _commentController.clear();
               } else {
@@ -193,21 +307,11 @@ class _ContractDetailViewState extends State<ContractDetailView> {
               }
             },
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
           _PhotosSection(
             photos: contract.photos,
             isSaving: viewModel.isSaving,
             onAddPhoto: () => _pickPhoto(context, viewModel),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _PrimaryActionCard(
-            label: 'Cancelar contrato',
-            icon: Icons.cancel_rounded,
-            onPressed: viewModel.isSaving
-                ? null
-                : () => _showCancelDialog(context, viewModel),
-            isLoading: viewModel.isSaving,
-            color: AppColors.error,
           ),
         ],
       ],
@@ -535,37 +639,128 @@ class _SetTermsSheetState extends State<_SetTermsSheet> {
   }
 }
 
-class _ContractHeader extends StatelessWidget {
-  const _ContractHeader({required this.contract});
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label.toUpperCase(),
+      style: const TextStyle(
+        color: AppColors.text,
+        fontSize: 13,
+        fontWeight: AppTypography.bold,
+        letterSpacing: 0.4,
+      ),
+    );
+  }
+}
+
+class _SurfaceCard extends StatelessWidget {
+  const _SurfaceCard({required this.child, this.padding});
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Padding(
+        padding: padding ?? const EdgeInsets.all(14),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _StatusHero extends StatelessWidget {
+  const _StatusHero({required this.contract});
 
   final Contract contract;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final Color accent;
+    final String eyebrow;
+    final String title;
+    String? subtitle;
+
+    if (contract.isCancelled) {
+      accent = AppColors.text;
+      eyebrow = 'Contrato cancelado';
+      title = 'Cancelado';
+      subtitle = contract.cancelledAt == null
+          ? null
+          : 'Cancelado el ${_formatContractDate(contract.cancelledAt!)}';
+    } else if (contract.isRejected) {
+      accent = _discardRed;
+      eyebrow = 'Contrato rechazado';
+      title = 'Rechazado';
+      subtitle = contract.createdAt == null
+          ? null
+          : 'Propuesta enviada el ${_formatContractDate(contract.createdAt!)}';
+    } else if (contract.isActive) {
+      accent = _successGreen;
+      eyebrow = 'Contrato activo';
+      title = 'En vigencia';
+      subtitle = contract.acceptedAt == null
+          ? null
+          : 'Aceptado el ${_formatContractDate(contract.acceptedAt!)}';
+    } else {
+      accent = AppColors.primary;
+      eyebrow = 'Propuesta de contrato';
+      title = 'Pendiente de aceptación';
+      subtitle = contract.createdAt == null
+          ? 'Enviado por el contratante'
+          : 'Enviado por el contratante el ${_formatContractDate(contract.createdAt!)}';
+    }
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              contract.displayTitle,
-              style: Theme.of(context).textTheme.titleLarge,
+              eyebrow.toUpperCase(),
+              style: TextStyle(
+                color: accent,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.4,
+              ),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Row(
-              children: <Widget>[
-                _RoleBadge(isContratante: contract.isContratante),
-                const SizedBox(width: AppSpacing.sm),
-                _StatusBadge(
-                  label: contract.displayStatusLabel,
-                  status: contract.status,
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 20,
+                fontWeight: AppTypography.bold,
+              ),
+            ),
+            if (subtitle != null) ...<Widget>[
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 12,
+                  fontWeight: AppTypography.regular,
                 ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            if (contract.otherParty != null)
-              Text('Con: ${contract.otherParty?.nombre ?? 'Sin información'}'),
+              ),
+            ],
           ],
         ),
       ),
@@ -573,251 +768,392 @@ class _ContractHeader extends StatelessWidget {
   }
 }
 
-class _RoleBadge extends StatelessWidget {
-  const _RoleBadge({required this.isContratante});
-
-  final bool isContratante;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color color = isContratante ? AppColors.navy : AppColors.terracotta;
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        isContratante ? 'Soy contratante' : 'Soy contratado',
-        style: TextStyle(color: color, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.label, required this.status});
-
-  final String label;
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final (Color background, Color foreground, IconData icon) =
-        switch (Contract.normalizeStatus(status)) {
-      'active' => (
-        AppColors.successSurface,
-        AppColors.success,
-        Icons.check_circle_outline_rounded,
-      ),
-      'pending' => (
-        const Color(0xFFFFF8E1),
-        const Color(0xFFF57F17),
-        Icons.schedule_rounded,
-      ),
-      'rejected' => (
-        AppColors.errorSurface,
-        AppColors.error,
-        Icons.cancel_outlined,
-      ),
-      'cancelled' => (
-        AppColors.errorSurface,
-        AppColors.error,
-        Icons.cancel_outlined,
-      ),
-      _ => (const Color(0xFFEEEEEE), Colors.grey, Icons.info_outline),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
-      ),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 14, color: foreground),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            label,
-            style: TextStyle(color: foreground, fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({required this.title, required this.children});
+class _JobCard extends StatelessWidget {
+  const _JobCard({required this.title, required this.description});
 
   final String title;
-  final List<Widget> children;
+  final String description;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: AppSpacing.sm),
-            ...children,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
+    return _SurfaceCard(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Expanded(
-            flex: 3,
-            child: Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 15,
+              fontWeight: AppTypography.bold,
             ),
           ),
-          Expanded(flex: 5, child: Text(value)),
+          if (description.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 4),
+            Text(
+              description,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 12,
+                fontWeight: AppTypography.regular,
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _PrimaryActionCard extends StatelessWidget {
-  const _PrimaryActionCard({
-    required this.label,
-    required this.icon,
-    required this.onPressed,
-    this.isLoading = false,
-    this.color,
-  });
+class _PartiesRow extends StatelessWidget {
+  const _PartiesRow({required this.contract});
 
-  final String label;
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final bool isLoading;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            Flexible(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.icon(
-                  onPressed: onPressed,
-                  icon: isLoading
-                      ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(icon),
-                  label: Text(label),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: color,
-                    minimumSize: const Size(0, 44),
-                    maximumSize: const Size(220, 52),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionButtonsRow extends StatelessWidget {
-  const _ActionButtonsRow({
-    required this.firstLabel,
-    required this.firstIcon,
-    required this.firstColor,
-    required this.firstOnPressed,
-    required this.secondLabel,
-    required this.secondIcon,
-    required this.secondColor,
-    required this.secondOnPressed,
-  });
-
-  final String firstLabel;
-  final IconData firstIcon;
-  final Color firstColor;
-  final VoidCallback? firstOnPressed;
-  final String secondLabel;
-  final IconData secondIcon;
-  final Color secondColor;
-  final VoidCallback? secondOnPressed;
+  final Contract contract;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: <Widget>[
         Expanded(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 220),
-            child: FilledButton.icon(
-              onPressed: firstOnPressed,
-              icon: Icon(firstIcon),
-              label: Text(firstLabel),
-              style: FilledButton.styleFrom(
-                backgroundColor: firstColor,
-                minimumSize: const Size(0, 44),
-                maximumSize: const Size(220, 52),
-              ),
-            ),
+          child: _PartyCard(
+            role: 'Contratante',
+            name: contract.contratante?.nombre.trim().isNotEmpty == true
+                ? contract.contratante!.nombre.trim()
+                : 'Sin información',
           ),
         ),
-        const SizedBox(width: AppSpacing.sm),
+        const SizedBox(width: 10),
         Expanded(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 220),
-            child: FilledButton.icon(
-              onPressed: secondOnPressed,
-              icon: Icon(secondIcon),
-              label: Text(secondLabel),
-              style: FilledButton.styleFrom(
-                backgroundColor: secondColor,
-                minimumSize: const Size(0, 44),
-                maximumSize: const Size(220, 52),
-              ),
-            ),
+          child: _PartyCard(
+            role: 'Prestador',
+            name: contract.contratado?.nombre.trim().isNotEmpty == true
+                ? contract.contratado!.nombre.trim()
+                : 'Sin información',
           ),
         ),
       ],
+    );
+  }
+}
+
+class _PartyCard extends StatelessWidget {
+  const _PartyCard({required this.role, required this.name});
+
+  final String role;
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            role,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 11,
+              fontWeight: AppTypography.regular,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TermsCard extends StatelessWidget {
+  const _TermsCard({required this.contract});
+
+  final Contract contract;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<(String, String, bool)> rows = <(String, String, bool)>[
+      ('Monto', _paymentLabel(contract), true),
+      (
+        'Duración',
+        (contract.duration ?? '').trim().isNotEmpty
+            ? contract.duration!.trim()
+            : 'Sin definir',
+        false,
+      ),
+      if (contract.startDate != null)
+        (
+          'Fecha de inicio',
+          _formatContractDate(contract.startDate!),
+          false,
+        ),
+    ];
+
+    return _SurfaceCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: <Widget>[
+          for (int i = 0; i < rows.length; i++) ...<Widget>[
+            if (i > 0) const Divider(height: 1, color: AppColors.border),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      rows[i].$1,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 13,
+                        fontWeight: AppTypography.regular,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    rows[i].$2,
+                    style: TextStyle(
+                      color: rows[i].$3 ? AppColors.primary : AppColors.text,
+                      fontSize: 13,
+                      fontWeight: rows[i].$3
+                          ? AppTypography.bold
+                          : FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineCard extends StatelessWidget {
+  const _TimelineCard({required this.contract});
+
+  final Contract contract;
+
+  @override
+  Widget build(BuildContext context) {
+    final String workerName =
+        (contract.contratado?.nombre.trim().isNotEmpty == true)
+            ? contract.contratado!.nombre.trim()
+            : 'el prestador';
+
+    final List<_TimelineStep> steps = <_TimelineStep>[
+      _TimelineStep(
+        title: 'Oferta de contrato enviada',
+        subtitle: contract.createdAt == null
+            ? null
+            : _formatContractDateTime(contract.createdAt!),
+        done: contract.createdAt != null || contract.isOngoing || contract.isClosed,
+      ),
+    ];
+
+    if (contract.isRejected) {
+      steps.add(
+        const _TimelineStep(
+          title: 'Contrato rechazado',
+          subtitle: 'La propuesta no fue aceptada',
+          done: true,
+        ),
+      );
+    } else if (contract.isCancelled) {
+      steps.add(
+        _TimelineStep(
+          title: 'Contrato cancelado',
+          subtitle: contract.cancelledAt == null
+              ? null
+              : _formatContractDateTime(contract.cancelledAt!),
+          done: true,
+        ),
+      );
+    } else if (contract.isActive) {
+      steps.add(
+        _TimelineStep(
+          title: 'Contrato aceptado',
+          subtitle: contract.acceptedAt == null
+              ? null
+              : _formatContractDateTime(contract.acceptedAt!),
+          done: true,
+        ),
+      );
+    } else {
+      steps.add(
+        _TimelineStep(
+          title: 'Pendiente firma de $workerName',
+          subtitle: 'En espera',
+          waiting: true,
+        ),
+      );
+    }
+
+    return _SurfaceCard(
+      child: Column(
+        children: <Widget>[
+          for (int i = 0; i < steps.length; i++)
+            _TimelineRow(step: steps[i], isLast: i == steps.length - 1),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineStep {
+  const _TimelineStep({
+    required this.title,
+    this.subtitle,
+    this.done = false,
+    this.waiting = false,
+  });
+
+  final String title;
+  final String? subtitle;
+  final bool done;
+  final bool waiting;
+}
+
+class _TimelineRow extends StatelessWidget {
+  const _TimelineRow({required this.step, required this.isLast});
+
+  final _TimelineStep step;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SizedBox(
+            width: 20,
+            child: Column(
+              children: <Widget>[
+                _TimelineDot(done: step.done, waiting: step.waiting),
+                if (!isLast)
+                  const Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4),
+                      child: Center(
+                        child: SizedBox(
+                          width: 2,
+                          height: double.infinity,
+                          child: ColoredBox(color: AppColors.border),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    step.title,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if ((step.subtitle ?? '').isNotEmpty)
+                    Text(
+                      step.subtitle!,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 11,
+                        fontWeight: AppTypography.regular,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineDot extends StatelessWidget {
+  const _TimelineDot({required this.done, required this.waiting});
+
+  final bool done;
+  final bool waiting;
+
+  @override
+  Widget build(BuildContext context) {
+    if (done) {
+      return const SizedBox(
+        width: 16,
+        height: 16,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: _successGreen,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Icon(Icons.check, size: 11, color: AppColors.surface),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: 16,
+      height: 16,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.border, width: 1.5),
+        ),
+        child: Center(
+          child: Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: waiting ? AppColors.primary : AppColors.border,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuotedComment extends StatelessWidget {
+  const _QuotedComment({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SurfaceCard(
+      child: Text(
+        '"$text"',
+        style: const TextStyle(
+          color: AppColors.text,
+          fontSize: 13,
+          fontWeight: AppTypography.regular,
+          fontStyle: FontStyle.italic,
+        ),
+      ),
     );
   }
 }
@@ -837,70 +1173,105 @@ class _CommentsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text(
-              'Comentarios',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const _SectionTitle('Comentarios'),
+        const SizedBox(height: 8),
+        if (comments.isEmpty)
+          const _SurfaceCard(
+            child: Text(
+              'Aún no hay comentarios.',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 13,
+                fontWeight: AppTypography.regular,
+              ),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            if (comments.isEmpty) const Text('Aún no hay comentarios.'),
-            if (comments.isNotEmpty)
-              ...comments.map((ContractComment comment) {
-                final DateTime? createdAt = comment.createdAt;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Text(
-                            comment.by?.nombre ?? 'Anónimo',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          if (createdAt != null)
-                            Text(
-                              '· ${createdAt.day}/${createdAt.month}/${createdAt.year}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                        ],
+          ),
+        for (final ContractComment comment in comments) ...<Widget>[
+          _SurfaceCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        comment.by?.nombre.trim().isNotEmpty == true
+                            ? comment.by!.nombre.trim()
+                            : 'Anónimo',
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(comment.body),
-                    ],
+                    ),
+                    if (comment.createdAt != null)
+                      Text(
+                        _formatContractDate(comment.createdAt!),
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 11,
+                          fontWeight: AppTypography.regular,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  comment.body,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 13,
+                    fontWeight: AppTypography.regular,
                   ),
-                );
-              }),
-            const SizedBox(height: AppSpacing.sm),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Escribe un comentario',
-                border: OutlineInputBorder(),
-              ),
-              minLines: 1,
-              maxLines: 3,
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton(
-                onPressed: isSaving ? null : onSend,
-                child: const Text('Enviar comentario'),
-              ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        const SizedBox(height: 4),
+        TextField(
+          controller: controller,
+          minLines: 1,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: 'Escribe un comentario',
+            filled: true,
+            fillColor: AppColors.surface,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 12,
             ),
-          ],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton(
+            onPressed: isSaving ? null : onSend,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Enviar comentario'),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -918,56 +1289,224 @@ class _PhotosSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            const Text(
-              'Fotos',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            if (photos.isEmpty) const Text('No hay fotos agregadas aún.'),
-            if (photos.isNotEmpty)
-              Column(
-                children: photos.map((ContractPhoto photo) {
-                  final DateTime? createdAt = photo.createdAt;
-                  final String authorName = photo.by?.nombre ?? 'Usuario';
-                  final String dateLabel = createdAt != null
-                      ? ' · ${createdAt.day}/${createdAt.month}/${createdAt.year}'
-                      : '';
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        if ((photo.url).isNotEmpty) Image.network(photo.url, fit: BoxFit.cover),
-                        const SizedBox(height: AppSpacing.xs),
-                        if ((photo.description).isNotEmpty) Text(photo.description),
-                        if (photo.by != null || createdAt != null)
-                          Text(
-                            '$authorName$dateLabel',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const _SectionTitle('Fotos'),
+        const SizedBox(height: 8),
+        if (photos.isEmpty)
+          const _SurfaceCard(
+            child: Text(
+              'No hay fotos agregadas aún.',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 13,
+                fontWeight: AppTypography.regular,
               ),
-            const SizedBox(height: AppSpacing.sm),
-            FilledButton.icon(
-              onPressed: isSaving ? null : onAddPhoto,
-              icon: const Icon(Icons.add_a_photo_rounded),
-              label: const Text('Agregar foto'),
             ),
-          ],
+          ),
+        for (final ContractPhoto photo in photos) ...<Widget>[
+          _SurfaceCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                if (photo.url.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
+                    ),
+                    child: Image.network(
+                      photo.url,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 180,
+                      errorBuilder: (_, _, _) {
+                        return const SizedBox(
+                          height: 80,
+                          child: Center(
+                            child: Text('No se pudo cargar la foto'),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      if (photo.description.isNotEmpty)
+                        Text(
+                          photo.description,
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 13,
+                            fontWeight: AppTypography.regular,
+                          ),
+                        ),
+                      if (photo.by != null || photo.createdAt != null)
+                        Text(
+                          '${photo.by?.nombre ?? 'Usuario'}'
+                          '${photo.createdAt == null ? '' : ' · ${_formatContractDate(photo.createdAt!)}'}',
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 11,
+                            fontWeight: AppTypography.regular,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        const SizedBox(height: 4),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: isSaving ? null : onAddPhoto,
+            icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+            label: const Text('Agregar foto'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.border),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
         ),
+      ],
+    );
+  }
+}
+
+class _ContractFooter extends StatelessWidget {
+  const _ContractFooter({
+    required this.contract,
+    required this.isSaving,
+    required this.onSetTerms,
+    required this.onAccept,
+    required this.onReject,
+    required this.onCancel,
+  });
+
+  final Contract contract;
+  final bool isSaving;
+  final VoidCallback onSetTerms;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget? actions;
+    if (contract.isContratante && contract.isPending) {
+      actions = SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: isSaving ? null : onSetTerms,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.surface,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          child: Text(
+            isSaving
+                ? 'Guardando...'
+                : (contract.hasTerms ? 'Editar términos' : 'Fijar términos'),
+          ),
+        ),
+      );
+    } else if (contract.isContratado && contract.isPending) {
+      actions = Row(
+        children: <Widget>[
+          Expanded(
+            child: OutlinedButton(
+              onPressed: isSaving ? null : onReject,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _discardRed,
+                backgroundColor: AppColors.surface,
+                side: const BorderSide(color: _discardRed),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              child: const Text('Rechazar contrato'),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: FilledButton(
+              onPressed: isSaving ? null : onAccept,
+              style: FilledButton.styleFrom(
+                backgroundColor: _successGreen,
+                foregroundColor: AppColors.surface,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              child: const Text('Aceptar contrato'),
+            ),
+          ),
+        ],
+      );
+    } else if (contract.isActive) {
+      actions = SizedBox(
+        width: double.infinity,
+        child: OutlinedButton(
+          onPressed: isSaving ? null : onCancel,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _discardRed,
+            backgroundColor: AppColors.surface,
+            side: const BorderSide(color: _discardRed),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            textStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          child: const Text('Cancelar contrato'),
+        ),
+      );
+    }
+
+    if (actions == null) {
+      return const SizedBox.shrink();
+    }
+
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+        child: actions,
       ),
     );
   }

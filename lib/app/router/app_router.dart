@@ -79,6 +79,14 @@ GoRouter createAppRouter(SessionViewModel sessionViewModel) {
       ),
 
       GoRoute(
+        path: RoutePaths.editProfile,
+        name: AppRouteNames.editProfile,
+        builder: (BuildContext context, GoRouterState state) {
+          return const CompleteProfileView(editing: true);
+        },
+      ),
+
+      GoRoute(
         path: RoutePaths.home,
         name: AppRouteNames.home,
         builder: (BuildContext context, GoRouterState state) {

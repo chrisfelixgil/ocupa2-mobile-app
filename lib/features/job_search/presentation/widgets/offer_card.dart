@@ -1,7 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:ocupa2/app/theme/app_colors.dart';
-import 'package:ocupa2/app/theme/app_spacing.dart';
+import 'package:ocupa2/app/theme/app_typography.dart';
 import 'package:ocupa2/features/job_search/data/models/offer.dart';
+import 'package:ocupa2/features/job_search/presentation/widgets/offer_display.dart';
 
 class OfferCard extends StatelessWidget {
   const OfferCard({required this.offer, required this.onTap, super.key});
@@ -11,86 +13,113 @@ class OfferCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final TextTheme textTheme = Theme.of(context).textTheme;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
+    return Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: AppColors.border),
       ),
-      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.all(12),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 child: SizedBox(
-                  width: 64,
-                  height: 64,
-                  child: offer.photoUrl == null
-                      ? Container(
-                          color: AppColors.border,
-                          child: const Icon(
-                            Icons.work_outline_rounded,
-                            color: AppColors.navy,
-                          ),
-                        )
-                      : Image.network(
-                          offer.photoUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) {
-                            return Container(
-                              color: AppColors.border,
-                              child: const Icon(
-                                Icons.broken_image_outlined,
-                                color: AppColors.navy,
-                              ),
-                            );
-                          },
-                        ),
+                  width: 70,
+                  height: 70,
+                  child: _OfferPhoto(url: offer.photoUrl),
                 ),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      offer.displayJobType,
-                      style: textTheme.titleMedium?.copyWith(
-                        color: AppColors.navy,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      offer.address,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
                     Row(
                       children: <Widget>[
-                        _Chip(label: offer.contractType),
-                        if (offer.paymentAmount != null) ...[
-                          const SizedBox(width: AppSpacing.xs),
-                          _Chip(
-                            label:
-                                '${offer.paymentAmount} ${offer.paymentCurrency ?? ''}'
-                                    .trim(),
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.06),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              offer.displayJobType,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 10,
+                                fontWeight: AppTypography.medium,
+                              ),
+                            ),
                           ),
-                        ],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          OfferDisplay.contractLabel(offer.contractType),
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 11,
+                            fontWeight: AppTypography.regular,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      offer.description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 14,
+                        fontWeight: AppTypography.medium,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: <Widget>[
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 12,
+                          color: AppColors.text,
+                        ),
+                        const SizedBox(width: 2),
+                        Flexible(
+                          child: Text(
+                            offer.address,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.text,
+                              fontSize: 11,
+                              fontWeight: AppTypography.regular,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          OfferDisplay.paymentLabel(offer),
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 12,
+                            fontWeight: AppTypography.bold,
+                          ),
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.navy),
             ],
           ),
         ),
@@ -99,21 +128,41 @@ class OfferCard extends StatelessWidget {
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label});
+class _OfferPhoto extends StatelessWidget {
+  const _OfferPhoto({required this.url});
 
-  final String label;
+  final String? url;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.cream,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(label, style: Theme.of(context).textTheme.labelSmall),
+    if (url == null || url!.isEmpty) {
+      return const ColoredBox(
+        color: AppColors.border,
+        child: Icon(Icons.work_outline_rounded, color: AppColors.text),
+      );
+    }
+
+    return CachedNetworkImage(
+      imageUrl: url!,
+      fit: BoxFit.cover,
+      placeholder: (_, _) {
+        return const ColoredBox(
+          color: AppColors.border,
+          child: Center(
+            child: SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
+      },
+      errorWidget: (_, _, _) {
+        return const ColoredBox(
+          color: AppColors.border,
+          child: Icon(Icons.broken_image_outlined, color: AppColors.text),
+        );
+      },
     );
   }
 }

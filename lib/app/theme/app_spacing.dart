@@ -5,4 +5,10 @@
   static const double lg = 24;
   static const double xl = 32;
   static const double xxl = 48;
+
+  /// Radio de inputs y botones primarios en Figma.
+  static const double radius = 12;
+
+  /// Alto de botón primario en Figma.
+  static const double buttonHeight = 48;
 }

@@ -14,11 +14,33 @@ class ApplicationsViewModel extends ChangeNotifier {
   List<Application> _applications = const <Application>[];
   String? _errorMessage;
   bool _isUpdating = false;
+  String _statusFilter = 'all';
 
   ApplicationsStatus get status => _status;
   List<Application> get applications => _applications;
   String? get errorMessage => _errorMessage;
   bool get isUpdating => _isUpdating;
+  String get statusFilter => _statusFilter;
+
+  List<Application> get visibleApplications {
+    if (_statusFilter == 'all') {
+      return _applications;
+    }
+    return _applications
+        .where(
+          (Application item) =>
+              item.status.toLowerCase().trim() == _statusFilter,
+        )
+        .toList();
+  }
+
+  void setStatusFilter(String filter) {
+    if (_statusFilter == filter) {
+      return;
+    }
+    _statusFilter = filter;
+    notifyListeners();
+  }
 
   Future<void> load() async {
     _status = ApplicationsStatus.loading;

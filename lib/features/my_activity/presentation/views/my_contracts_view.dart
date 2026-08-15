@@ -3,13 +3,17 @@ import 'package:go_router/go_router.dart';
 import 'package:ocupa2/app/router/route_paths.dart';
 import 'package:ocupa2/app/theme/app_colors.dart';
 import 'package:ocupa2/app/theme/app_spacing.dart';
+import 'package:ocupa2/app/theme/app_typography.dart';
 import 'package:ocupa2/features/my_activity/data/models/contract.dart';
 import 'package:ocupa2/features/my_activity/presentation/viewmodels/contracts_status.dart';
 import 'package:ocupa2/features/my_activity/presentation/viewmodels/contracts_view_model.dart';
+import 'package:ocupa2/features/my_activity/presentation/widgets/contract_list_card.dart';
 import 'package:provider/provider.dart';
 
 class MyContractsView extends StatefulWidget {
-  const MyContractsView({super.key});
+  const MyContractsView({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<MyContractsView> createState() => _MyContractsViewState();
@@ -26,339 +30,233 @@ class _MyContractsViewState extends State<MyContractsView> {
     });
   }
 
+  Future<void> _openContract(Contract contract) async {
+    await context.push(RoutePaths.contractDetail(contract.id));
+    if (mounted) {
+      await context.read<ContractsViewModel>().refresh();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ContractsViewModel viewModel = context.watch<ContractsViewModel>();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mis contratos'),
-      ),
-      body: switch (viewModel.status) {
-        ContractsStatus.idle || ContractsStatus.loading =>
-          const Center(child: CircularProgressIndicator()),
-        ContractsStatus.error => _ErrorState(
-            message: viewModel.errorMessage,
-            onRetry: viewModel.load,
-          ),
-        ContractsStatus.success => Column(
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  AppSpacing.sm,
-                  AppSpacing.md,
-                  AppSpacing.xs,
-                ),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: <Widget>[
-                      ChoiceChip(
-                        selected: viewModel.selectedFilter == 'all',
-                        label: const Text('Todos'),
-                        onSelected: (bool selected) {
-                          if (selected) {
-                            viewModel.setFilter('all');
-                          }
-                        },
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      ChoiceChip(
-                        selected: viewModel.selectedFilter == 'active',
-                        label: const Text('Activos'),
-                        onSelected: (bool selected) {
-                          if (selected) {
-                            viewModel.setFilter('active');
-                          }
-                        },
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      ChoiceChip(
-                        selected: viewModel.selectedFilter == 'pending',
-                        label: const Text('Pendientes'),
-                        onSelected: (bool selected) {
-                          if (selected) {
-                            viewModel.setFilter('pending');
-                          }
-                        },
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      ChoiceChip(
-                        selected: viewModel.selectedFilter == 'closed',
-                        label: const Text('Rechazados / Cancelados'),
-                        onSelected: (bool selected) {
-                          if (selected) {
-                            viewModel.setFilter('closed');
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Expanded(
-                child: _ContractsList(
-                  contracts: viewModel.contracts,
-                  selectedFilter: viewModel.selectedFilter,
-                ),
-              ),
-            ],
-          ),
-      },
-    );
-  }
-}
-
-class _ContractsList extends StatelessWidget {
-  const _ContractsList({
-    required this.contracts,
-    required this.selectedFilter,
-  });
-
-  final List<Contract> contracts;
-  final String selectedFilter;
-
-  @override
-  Widget build(BuildContext context) {
-    if (contracts.isEmpty) {
-      return _EmptyState(selectedFilter: selectedFilter);
-    }
-
-    return RefreshIndicator(
-      onRefresh: context.read<ContractsViewModel>().load,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        itemCount: contracts.length,
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (BuildContext context, int index) {
-          final Contract contract = contracts[index];
-          return _ContractCard(contract: contract);
-        },
-      ),
-    );
-  }
-}
-
-class _ContractCard extends StatelessWidget {
-  const _ContractCard({required this.contract});
-
-  final Contract contract;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () async {
-          await context.push(RoutePaths.contractDetail(contract.id));
-          if (context.mounted) {
-            await context.read<ContractsViewModel>().refresh();
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          contract.displayTitle,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        if (contract.otherParty != null)
-                          Text(
-                            contract.isContratante
-                                ? 'Contratado: ${contract.otherParty?.nombre ?? 'Sin información'}'
-                                : 'Contratante: ${contract.otherParty?.nombre ?? 'Sin información'}',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                      ],
-                    ),
-                  ),
-                  _StatusChip(
-                    status: contract.status,
-                    label: contract.displayStatusLabel,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: <Widget>[
-                  _RoleBadge(isContratante: contract.isContratante),
-                  const Spacer(),
-                  if (contract.salary != null)
-                    Text(
-                      '${contract.currency ?? 'DOP'} ${contract.salary}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.navy,
-                      ),
-                    ),
-                  const SizedBox(width: AppSpacing.xs),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Colors.grey,
-                  ),
-                ],
-              ),
-            ],
-          ),
+    final Widget body = switch (viewModel.status) {
+      ContractsStatus.idle || ContractsStatus.loading =>
+        const Center(child: CircularProgressIndicator()),
+      ContractsStatus.error => _ErrorState(
+          message: viewModel.errorMessage,
+          onRetry: viewModel.load,
         ),
-      ),
-    );
-  }
-}
-
-class _RoleBadge extends StatelessWidget {
-  const _RoleBadge({required this.isContratante});
-
-  final bool isContratante;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color color = isContratante ? AppColors.navy : AppColors.terracotta;
-    final IconData icon =
-        isContratante ? Icons.business_center_outlined : Icons.person_outline;
-    final String label = isContratante ? 'Soy contratante' : 'Soy contratado';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xs + 2,
-        vertical: 2,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status, required this.label});
-
-  final String status;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final (Color bgColor, Color fgColor, IconData icon) =
-        switch (Contract.normalizeStatus(status)) {
-      'active' => (
-          AppColors.successSurface,
-          AppColors.success,
-          Icons.check_circle_outline_rounded
-        ),
-      'pending' => (
-          const Color(0xFFFFF8E1),
-          const Color(0xFFF57F17),
-          Icons.schedule_rounded
-        ),
-      'rejected' => (
-          AppColors.errorSurface,
-          AppColors.error,
-          Icons.highlight_off_rounded
-        ),
-      'cancelled' => (
-          const Color(0xFFEEEEEE),
-          Colors.grey.shade700,
-          Icons.cancel_outlined
-        ),
-      _ => (
-          const Color(0xFFEEEEEE),
-          Colors.grey.shade700,
-          Icons.cancel_outlined
+      ContractsStatus.success => _ContractsBody(
+          showHeader: !widget.embedded,
+          contracts: viewModel.contracts,
+          filter: viewModel.selectedFilter,
+          onFilter: viewModel.setFilter,
+          onOpen: _openContract,
         ),
     };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
+    if (widget.embedded) {
+      return body;
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        title: const Text(''),
       ),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 14, color: fgColor),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: fgColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+      body: body,
+    );
+  }
+}
+
+class _ContractsBody extends StatelessWidget {
+  const _ContractsBody({
+    required this.showHeader,
+    required this.contracts,
+    required this.filter,
+    required this.onFilter,
+    required this.onOpen,
+  });
+
+  final bool showHeader;
+  final List<Contract> contracts;
+  final String filter;
+  final ValueChanged<String> onFilter;
+  final Future<void> Function(Contract contract) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (showHeader)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Mis contratos',
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontSize: 24,
+                    fontWeight: AppTypography.bold,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Historial de acuerdos y trabajos pactados',
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontSize: 13,
+                    fontWeight: AppTypography.regular,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: Text(
+              'Historial de acuerdos y trabajos pactados',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 13,
+                fontWeight: AppTypography.regular,
+              ),
             ),
           ),
-        ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: <Widget>[
+                _FilterChip(
+                  label: 'Todos',
+                  selected: filter == 'all',
+                  onTap: () => onFilter('all'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Pendiente',
+                  selected: filter == 'pending',
+                  onTap: () => onFilter('pending'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Activo',
+                  selected: filter == 'active',
+                  onTap: () => onFilter('active'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Rechazado',
+                  selected: filter == 'rejected',
+                  onTap: () => onFilter('rejected'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Cancelado',
+                  selected: filter == 'cancelled',
+                  onTap: () => onFilter('cancelled'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: contracts.isEmpty
+              ? _EmptyState(filter: filter)
+              : RefreshIndicator(
+                  onRefresh: context.read<ContractsViewModel>().load,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                    itemCount: contracts.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (BuildContext context, int index) {
+                      final Contract contract = contracts[index];
+                      return ContractListCard(
+                        contract: contract,
+                        onTap: () => onOpen(contract),
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.primary : AppColors.surface,
+      shape: StadiumBorder(
+        side: selected
+            ? BorderSide.none
+            : const BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? AppColors.onPrimary : AppColors.text,
+              fontSize: 13,
+              fontWeight: selected
+                  ? FontWeight.w600
+                  : AppTypography.regular,
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.selectedFilter});
+  const _EmptyState({required this.filter});
 
-  final String selectedFilter;
+  final String filter;
 
   @override
   Widget build(BuildContext context) {
-    final String message = switch (selectedFilter) {
+    final String message = switch (filter) {
       'active' => 'No tienes contratos activos.',
       'pending' => 'No tienes contratos pendientes.',
+      'rejected' => 'No tienes contratos rechazados.',
+      'cancelled' => 'No tienes contratos cancelados.',
       'closed' => 'No tienes contratos rechazados o cancelados.',
-      _ => 'No tienes contratos en esta sección.',
+      _ => 'Aún no tienes contratos.',
     };
 
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const Icon(
-              Icons.gavel_outlined,
-              size: 64,
-              color: AppColors.terracotta,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Text(
-              'Los contratos se generan automáticamente al seleccionar un ganador en una oferta.',
-              textAlign: TextAlign.center,
-            ),
-          ],
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.text, fontSize: 14),
         ),
       ),
     );
@@ -369,7 +267,7 @@ class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.message, required this.onRetry});
 
   final String? message;
-  final VoidCallback onRetry;
+  final Future<void> Function() onRetry;
 
   @override
   Widget build(BuildContext context) {

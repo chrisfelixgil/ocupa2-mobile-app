@@ -5,9 +5,11 @@ import 'package:latlong2/latlong.dart';
 import 'package:ocupa2/app/router/app_routes.dart';
 import 'package:ocupa2/app/theme/app_colors.dart';
 import 'package:ocupa2/app/theme/app_spacing.dart';
+import 'package:ocupa2/app/theme/app_typography.dart';
 import 'package:ocupa2/features/job_search/data/models/offer.dart';
 import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offers_status.dart';
 import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offers_view_model.dart';
+import 'package:ocupa2/features/job_search/presentation/widgets/offer_display.dart';
 import 'package:provider/provider.dart';
 
 /// Centro geográfico aproximado de República Dominicana. El mapa siempre
@@ -30,6 +32,15 @@ const String _tileUrlTemplate =
 
 const List<String> _tileSubdomains = <String>['a', 'b', 'c', 'd'];
 
+const List<MapEntry<String, String>> _contractTypes =
+    <MapEntry<String, String>>[
+      MapEntry<String, String>('temporal', 'Temporal'),
+      MapEntry<String, String>('fijo', 'Fijo'),
+      MapEntry<String, String>('horas', 'Por horas'),
+    ];
+
+const Color _payGreen = Color(0xFF16A34A);
+
 class OfferMapView extends StatefulWidget {
   const OfferMapView({super.key});
 
@@ -39,17 +50,28 @@ class OfferMapView extends StatefulWidget {
 
 class _OfferMapViewState extends State<OfferMapView> {
   final MapController _mapController = MapController();
+  final TextEditingController _searchController = TextEditingController();
   Offer? _selectedOffer;
 
   @override
   void initState() {
     super.initState();
 
+    _searchController.addListener(() {
+      setState(() {});
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<ExploreOffersViewModel>().load();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   /// Ofertas con coordenadas utilizables para el mapa.
@@ -68,10 +90,93 @@ class _OfferMapViewState extends State<OfferMapView> {
     }).toList();
   }
 
+  List<Offer> _matching(List<Offer> offers) {
+    final String query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) {
+      return offers;
+    }
+
+    return offers.where((Offer offer) {
+      return offer.description.toLowerCase().contains(query) ||
+          offer.address.toLowerCase().contains(query) ||
+          offer.displayJobType.toLowerCase().contains(query);
+    }).toList();
+  }
+
   void _selectOffer(Offer? offer) {
     setState(() {
       _selectedOffer = offer;
     });
+  }
+
+  Future<void> _openFilters() async {
+    final ExploreOffersViewModel viewModel = context
+        .read<ExploreOffersViewModel>();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Filtrar por contrato',
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontSize: 16,
+                    fontWeight: AppTypography.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    _MapFilterChip(
+                      label: 'Todos',
+                      selected: viewModel.contractTypeFilter == null,
+                      onTap: () {
+                        viewModel.setContractTypeFilter(null);
+                        Navigator.of(sheetContext).pop();
+                      },
+                    ),
+                    ..._contractTypes.map((MapEntry<String, String> item) {
+                      return _MapFilterChip(
+                        label: item.value,
+                        selected: viewModel.contractTypeFilter == item.key,
+                        onTap: () {
+                          viewModel.setContractTypeFilter(item.key);
+                          Navigator.of(sheetContext).pop();
+                        },
+                      );
+                    }),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -80,71 +185,136 @@ class _OfferMapViewState extends State<OfferMapView> {
         .watch<ExploreOffersViewModel>();
 
     final List<Offer> located = viewModel.status == ExploreOffersStatus.success
-        ? _offersWithLocation(viewModel.offers)
+        ? _matching(_offersWithLocation(viewModel.offers))
         : const <Offer>[];
 
+    final Offer? selected =
+        located.any((Offer offer) => offer.id == _selectedOffer?.id)
+        ? _selectedOffer
+        : null;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Mapa de ofertas')),
-      body: Stack(
+      backgroundColor: AppColors.surface,
+      body: Column(
         children: <Widget>[
-          Positioned.fill(
-            child: _OffersMap(
-              mapController: _mapController,
-              center: _countryCenter,
-              initialZoom: _countryZoom,
-              offers: located,
-              selectedOffer: _selectedOffer,
-              onOfferTap: _selectOffer,
-              onMapTap: () => _selectOffer(null),
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      IconButton(
+                        tooltip: 'Volver',
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back),
+                        color: AppColors.text,
+                      ),
+                      const Expanded(
+                        child: Text(
+                          'Encuentra trabajo',
+                          style: TextStyle(
+                            color: AppColors.text,
+                            fontSize: 20,
+                            fontWeight: AppTypography.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _searchController,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: 'Buscar empleos, empresas...',
+                      prefixIcon: const Icon(Icons.search, size: 18),
+                      suffixIcon: IconButton(
+                        tooltip: 'Filtros',
+                        onPressed: _openFilters,
+                        icon: const Icon(
+                          Icons.tune,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          if (viewModel.isLoading)
-            const Positioned(
-              top: AppSpacing.md,
-              left: 0,
-              right: 0,
-              child: Center(child: CircularProgressIndicator()),
+          Expanded(
+            child: Stack(
+              children: <Widget>[
+                Positioned.fill(
+                  child: _OffersMap(
+                    mapController: _mapController,
+                    center: _countryCenter,
+                    initialZoom: _countryZoom,
+                    offers: located,
+                    selectedOffer: selected,
+                    onOfferTap: _selectOffer,
+                    onMapTap: () => _selectOffer(null),
+                  ),
+                ),
+                if (viewModel.isLoading)
+                  const Positioned(
+                    top: AppSpacing.md,
+                    left: 0,
+                    right: 0,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                if (viewModel.status == ExploreOffersStatus.success &&
+                    located.isEmpty)
+                  const Positioned(
+                    top: AppSpacing.md,
+                    left: AppSpacing.md,
+                    right: AppSpacing.md,
+                    child: _InfoBanner(
+                      message:
+                          'Ninguna oferta activa tiene ubicación todavía.',
+                    ),
+                  ),
+                if (selected != null)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _OfferPreviewCard(
+                      offer: selected,
+                      onTap: () async {
+                        final String offerId = selected.id;
+                        final Object? applied = await context.pushNamed(
+                          AppRouteNames.jobSearchOfferDetail,
+                          pathParameters: <String, String>{'id': offerId},
+                        );
+
+                        if (!context.mounted) {
+                          return;
+                        }
+
+                        final ExploreOffersViewModel currentViewModel =
+                            context.read<ExploreOffersViewModel>();
+
+                        if (applied == true) {
+                          _selectOffer(null);
+                          currentViewModel.hideOffer(offerId);
+                        }
+
+                        await currentViewModel.load();
+                      },
+                    ),
+                  ),
+              ],
             ),
-          if (viewModel.status == ExploreOffersStatus.success &&
-              located.isEmpty)
-            const Positioned(
-              top: AppSpacing.md,
-              left: AppSpacing.md,
-              right: AppSpacing.md,
-              child: _InfoBanner(
-                message: 'Ninguna oferta activa tiene ubicación todavía.',
-              ),
-            ),
-          if (_selectedOffer != null)
-            Positioned(
-              left: AppSpacing.md,
-              right: AppSpacing.md,
-              bottom: AppSpacing.md,
-              child: _OfferPreviewCard(
-                offer: _selectedOffer!,
-                onTap: () async {
-                  final String offerId = _selectedOffer!.id;
-                  final Object? applied = await context.pushNamed(
-                    AppRouteNames.jobSearchOfferDetail,
-                    pathParameters: <String, String>{'id': offerId},
-                  );
-
-                  if (!mounted) {
-                    return;
-                  }
-
-                  final ExploreOffersViewModel viewModel =
-                      context.read<ExploreOffersViewModel>();
-
-                  if (applied == true) {
-                    _selectOffer(null);
-                    viewModel.hideOffer(offerId);
-                  }
-
-                  await viewModel.load();
-                },
-              ),
-            ),
+          ),
         ],
       ),
     );
@@ -227,15 +397,33 @@ class _OffersMap extends StatelessWidget {
               final bool isSelected = selectedOffer?.id == offer.id;
               return Marker(
                 point: LatLng(offer.latitude!, offer.longitude!),
-                width: 44,
-                height: 44,
+                width: isSelected ? 44 : 28,
+                height: isSelected ? 44 : 28,
                 child: GestureDetector(
                   onTap: () => onOfferTap(offer),
-                  child: Icon(
-                    Icons.location_on_rounded,
-                    color: isSelected ? AppColors.terracotta : AppColors.navy,
-                    size: 40,
-                  ),
+                  child: isSelected
+                      ? Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.primary,
+                              width: 3,
+                            ),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.circle,
+                              size: 12,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        )
+                      : const Icon(
+                          Icons.location_on_rounded,
+                          color: AppColors.text,
+                          size: 28,
+                        ),
                 ),
               );
             }).toList(),
@@ -256,7 +444,7 @@ class _InfoBanner extends StatelessWidget {
     return Material(
       elevation: 2,
       borderRadius: BorderRadius.circular(12),
-      color: AppColors.white,
+      color: AppColors.surface,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.sm),
         child: Text(message, textAlign: TextAlign.center),
@@ -273,42 +461,133 @@ class _OfferPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final TextTheme textTheme = Theme.of(context).textTheme;
-
     return Material(
-      elevation: 3,
-      borderRadius: BorderRadius.circular(16),
-      color: AppColors.white,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+      color: AppColors.surface,
+      elevation: 8,
+      shadowColor: const Color(0x140F172A),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      child: SafeArea(
+        top: false,
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      offer.displayJobType,
-                      style: textTheme.titleMedium?.copyWith(
-                        color: AppColors.navy,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      offer.address,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.bodyMedium,
-                    ),
-                  ],
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: AppColors.navy),
+              const SizedBox(height: 16),
+              Row(
+                children: <Widget>[
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.work_outline,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          offer.description,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 16,
+                            fontWeight: AppTypography.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${offer.displayJobType} • ${offer.address}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 13,
+                            fontWeight: AppTypography.regular,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          OfferDisplay.paymentLabel(offer),
+                          style: const TextStyle(
+                            color: _payGreen,
+                            fontSize: 14,
+                            fontWeight: AppTypography.medium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: onTap,
+                child: const Text(
+                  'Ver oferta',
+                  style: TextStyle(fontSize: 15),
+                ),
+              ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MapFilterChip extends StatelessWidget {
+  const _MapFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.primary : AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: selected
+            ? BorderSide.none
+            : const BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? AppColors.onPrimary : AppColors.text,
+              fontSize: 12,
+              fontWeight: selected
+                  ? AppTypography.medium
+                  : AppTypography.regular,
+            ),
           ),
         ),
       ),

@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:ocupa2/app/router/app_routes.dart';
 import 'package:ocupa2/app/theme/app_colors.dart';
 import 'package:ocupa2/app/theme/app_spacing.dart';
+import 'package:ocupa2/app/theme/app_typography.dart';
 import 'package:ocupa2/features/my_activity/data/models/application.dart';
 import 'package:ocupa2/features/my_activity/presentation/viewmodels/applications_status.dart';
 import 'package:ocupa2/features/my_activity/presentation/viewmodels/applications_view_model.dart';
+import 'package:ocupa2/features/my_activity/presentation/widgets/my_application_card.dart';
 import 'package:provider/provider.dart';
 
 class MyApplicationsView extends StatefulWidget {
-  const MyApplicationsView({super.key});
+  const MyApplicationsView({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<MyApplicationsView> createState() => _MyApplicationsViewState();
@@ -24,288 +30,228 @@ class _MyApplicationsViewState extends State<MyApplicationsView> {
     });
   }
 
+  void _openApplication(Application application) {
+    context.pushNamed(
+      AppRouteNames.myApplicationDetail,
+      pathParameters: <String, String>{'id': application.id},
+      extra: application,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ApplicationsViewModel viewModel =
         context.watch<ApplicationsViewModel>();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mis aplicaciones'),
-      ),
-      body: switch (viewModel.status) {
-        ApplicationsStatus.idle || ApplicationsStatus.loading =>
-          const Center(child: CircularProgressIndicator()),
-        ApplicationsStatus.error => _ErrorState(
-            message: viewModel.errorMessage,
-            onRetry: viewModel.load,
-          ),
-        ApplicationsStatus.success => _ApplicationsList(
-            applications: viewModel.applications,
-          ),
-      },
-    );
-  }
-}
-
-class _ApplicationsList extends StatelessWidget {
-  const _ApplicationsList({required this.applications});
-
-  final List<Application> applications;
-
-  @override
-  Widget build(BuildContext context) {
-    if (applications.isEmpty) {
-      return const _EmptyState();
-    }
-
-    return RefreshIndicator(
-      onRefresh: context.read<ApplicationsViewModel>().load,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        itemCount: applications.length,
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (BuildContext context, int index) {
-          final Application application = applications[index];
-          return _ApplicationCard(application: application);
-        },
-      ),
-    );
-  }
-}
-
-class _ApplicationCard extends StatelessWidget {
-  const _ApplicationCard({required this.application});
-
-  final Application application;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                _OfferAvatar(photoUrl: application.displayPhotoUrl),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        application.displayTitle,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      if (application.displayDescription.isNotEmpty) ...<Widget>[
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          application.displayDescription,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                _StatusChip(
-                  status: application.status,
-                  label: application.displayStatusLabel,
-                ),
-              ],
-            ),
-            if (application.rating != null) ...<Widget>[
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: <Widget>[
-                  const Text('Calificación del contratante: ',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                  ...List<Widget>.generate(5, (int index) {
-                    return Icon(
-                      index < application.rating!
-                          ? Icons.star_rounded
-                          : Icons.star_outline_rounded,
-                      size: 16,
-                      color: Colors.amber,
-                    );
-                  }),
-                ],
-              ),
-            ],
-            if (application.comment != null &&
-                application.comment!.isNotEmpty) ...<Widget>[
-              const SizedBox(height: AppSpacing.sm),
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.xs + 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest
-                      .withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: <Widget>[
-                    const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: Text(
-                        'Mi propuesta: "${application.comment}"',
-                        style: Theme.of(context).textTheme.bodySmall,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
+    final Widget body = switch (viewModel.status) {
+      ApplicationsStatus.idle || ApplicationsStatus.loading =>
+        const Center(child: CircularProgressIndicator()),
+      ApplicationsStatus.error => _ErrorState(
+          message: viewModel.errorMessage,
+          onRetry: viewModel.load,
         ),
-      ),
-    );
-  }
-}
-
-class _OfferAvatar extends StatelessWidget {
-  const _OfferAvatar({this.photoUrl});
-
-  final String? photoUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    if (photoUrl != null && photoUrl!.isNotEmpty) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: SizedBox(
-          width: 48,
-          height: 48,
-          child: Image.network(
-            photoUrl!,
-            fit: BoxFit.cover,
-            loadingBuilder:
-                (BuildContext _, Widget child, ImageChunkEvent? progress) {
-              if (progress == null) {
-                return child;
-              }
-              return const CircleAvatar(
-                backgroundColor: AppColors.cream,
-                child: SizedBox.square(
-                  dimension: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              );
-            },
-            errorBuilder:
-                (BuildContext _, Object error, StackTrace? stackTrace) {
-              return const CircleAvatar(
-                backgroundColor: AppColors.cream,
-                child: Icon(Icons.work_outline_rounded, color: AppColors.navy),
-              );
-            },
-          ),
-        ),
-      );
-    }
-
-    return const CircleAvatar(
-      backgroundColor: AppColors.cream,
-      child: Icon(Icons.work_outline_rounded, color: AppColors.navy),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status, required this.label});
-
-  final String status;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final (Color bgColor, Color fgColor, IconData icon) =
-        switch (status.toLowerCase().trim()) {
-      'winner' => (
-          AppColors.successSurface,
-          AppColors.success,
-          Icons.emoji_events_outlined
-        ),
-      'finalist' => (
-          const Color(0xFFFFF8E1),
-          const Color(0xFFF57F17),
-          Icons.star_outline_rounded
-        ),
-      'discarded' => (
-          AppColors.errorSurface,
-          AppColors.error,
-          Icons.cancel_outlined
-        ),
-      _ => (
-          const Color(0xFFE3F2FD),
-          const Color(0xFF1976D2),
-          Icons.schedule_rounded
+      ApplicationsStatus.success => _ApplicationsBody(
+          showHeader: !widget.embedded,
+          applications: viewModel.visibleApplications,
+          filter: viewModel.statusFilter,
+          onFilter: viewModel.setStatusFilter,
+          onOpen: _openApplication,
         ),
     };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.xs,
+    if (widget.embedded) {
+      return body;
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        title: const Text(''),
       ),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 14, color: fgColor),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: fgColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+      body: body,
+    );
+  }
+}
+
+class _ApplicationsBody extends StatelessWidget {
+  const _ApplicationsBody({
+    required this.showHeader,
+    required this.applications,
+    required this.filter,
+    required this.onFilter,
+    required this.onOpen,
+  });
+
+  final bool showHeader;
+  final List<Application> applications;
+  final String filter;
+  final ValueChanged<String> onFilter;
+  final ValueChanged<Application> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (showHeader)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Mis aplicaciones',
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontSize: 24,
+                    fontWeight: AppTypography.bold,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Seguimiento de las ofertas a las que has aplicado',
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontSize: 13,
+                    fontWeight: AppTypography.regular,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: Text(
+              'Seguimiento de las ofertas a las que has aplicado',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 13,
+                fontWeight: AppTypography.regular,
+              ),
             ),
           ),
-        ],
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: <Widget>[
+                _FilterChip(
+                  label: 'Todas',
+                  selected: filter == 'all',
+                  onTap: () => onFilter('all'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'En revisión',
+                  selected: filter == 'applied',
+                  onTap: () => onFilter('applied'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Finalistas',
+                  selected: filter == 'finalist',
+                  onTap: () => onFilter('finalist'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Ganador',
+                  selected: filter == 'winner',
+                  onTap: () => onFilter('winner'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Descartado',
+                  selected: filter == 'discarded',
+                  onTap: () => onFilter('discarded'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: applications.isEmpty
+              ? _EmptyState(filtered: filter != 'all')
+              : RefreshIndicator(
+                  onRefresh: context.read<ApplicationsViewModel>().load,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                    itemCount: applications.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (BuildContext context, int index) {
+                      final Application application = applications[index];
+                      return MyApplicationCard(
+                        application: application,
+                        onTap: () => onOpen(application),
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.primary : AppColors.surface,
+      shape: StadiumBorder(
+        side: selected
+            ? BorderSide.none
+            : const BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? AppColors.onPrimary : AppColors.text,
+              fontSize: 13,
+              fontWeight: selected
+                  ? FontWeight.w600
+                  : AppTypography.regular,
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({this.filtered = false});
+
+  final bool filtered;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(
-              Icons.assignment_outlined,
-              size: 64,
-              color: AppColors.terracotta,
-            ),
-            SizedBox(height: AppSpacing.md),
-            Text(
-              'Aún no has aplicado a ninguna oferta.',
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: AppSpacing.sm),
-            Text(
-              'Explora las ofertas disponibles en la pestaña de empleos y postula a las que se adapten a ti.',
-              textAlign: TextAlign.center,
-            ),
-          ],
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Text(
+          filtered
+              ? 'No hay aplicaciones en este filtro.'
+              : 'Aún no has aplicado a ninguna oferta.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.text, fontSize: 14),
         ),
       ),
     );
@@ -313,10 +259,13 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+  const _ErrorState({
+    required this.message,
+    required this.onRetry,
+  });
 
   final String? message;
-  final VoidCallback onRetry;
+  final Future<void> Function() onRetry;
 
   @override
   Widget build(BuildContext context) {

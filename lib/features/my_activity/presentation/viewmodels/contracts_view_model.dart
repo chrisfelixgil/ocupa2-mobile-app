@@ -14,7 +14,7 @@ class ContractsViewModel extends ChangeNotifier {
   ContractsStatus _status = ContractsStatus.idle;
   List<Contract> _contracts = const <Contract>[];
   String? _errorMessage;
-  String _selectedFilter = 'all'; // 'all', 'active', 'pending', 'closed'
+  String _selectedFilter = 'all'; // 'all', 'active', 'pending', 'rejected', 'cancelled', 'closed'
 
   ContractsStatus get status => _status;
   List<Contract> get contracts => _filteredContracts;
@@ -30,6 +30,16 @@ class ContractsViewModel extends ChangeNotifier {
     if (_selectedFilter == 'pending') {
       return _contracts
           .where((Contract contract) => contract.isPending)
+          .toList();
+    }
+    if (_selectedFilter == 'rejected') {
+      return _contracts
+          .where((Contract contract) => contract.isRejected)
+          .toList();
+    }
+    if (_selectedFilter == 'cancelled') {
+      return _contracts
+          .where((Contract contract) => contract.isCancelled)
           .toList();
     }
     if (_selectedFilter == 'closed') {
