@@ -1,13 +1,19 @@
-import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:ocupa2/app/router/app_routes.dart';
+import 'package:ocupa2/features/job_posting/data/custom_field_date.dart';
 
+import '../../../catalog/data/models/custom_field.dart';
 import '../../../catalog/data/models/job_type.dart';
 import '../../../catalog/data/repositories/catalog_repository.dart';
 import '../../../payments/presentation/viewmodels/make_payment_view_model.dart';
@@ -36,13 +42,14 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   final _currencyController = TextEditingController(text: 'DOP');
   final List<_OfferQuestionForm> _questions = [];
 
-
-
   String? _jobTypeKey;
   String? _contractType;
 
-  /// Ruta local de la imagen seleccionada.
+  /// Nombre del archivo elegido (no es una ruta de disco en web).
   String? _photo;
+
+  /// Bytes locales para previsualizar (Android y Chrome).
+  Uint8List? _photoBytes;
 
   /// URL pública devuelta por el endpoint de subida.
   String? _photoUrl;
@@ -53,8 +60,16 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   bool _loadingJobTypes = true;
   String? _jobTypesError;
 
+  final Map<String, TextEditingController> _customTextControllers =
+      <String, TextEditingController>{};
+  final Map<String, String?> _customSelectValues = <String, String?>{};
+  final Map<String, bool> _customCheckValues = <String, bool>{};
+  final Map<String, DateTime?> _customDates = <String, DateTime?>{};
+
   bool _loadingLocation = false;
   bool _uploadingPhoto = false;
+  bool _publishing = false;
+  bool _publishedSuccessfully = false;
 
   @override
   void initState() {
@@ -70,6 +85,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     _lngController.dispose();
     _amountController.dispose();
     _currencyController.dispose();
+    _disposeCustomFieldControllers();
     for (final question in _questions) {
       question.dispose();
     }
@@ -109,6 +125,254 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     return key.replaceAll('_', ' ');
   }
 
+  JobType? get _selectedJobType {
+    if (_jobTypeKey == null) {
+      return null;
+    }
+
+    for (final JobType jobType in _jobTypes) {
+      if (jobType.key == _jobTypeKey) {
+        return jobType;
+      }
+    }
+
+    return null;
+  }
+
+  void _disposeCustomFieldControllers() {
+    for (final TextEditingController controller
+        in _customTextControllers.values) {
+      controller.dispose();
+    }
+    _customTextControllers.clear();
+    _customSelectValues.clear();
+    _customCheckValues.clear();
+    _customDates.clear();
+  }
+
+  void _onJobTypeChanged(String? value) {
+    _disposeCustomFieldControllers();
+    _jobTypeKey = value;
+
+    final JobType? jobType = _selectedJobType;
+    if (jobType != null) {
+      for (final CustomField field in jobType.customFields) {
+        if (field.type == 'select') {
+          _customSelectValues[field.key] = null;
+        } else if (field.type == 'check') {
+          _customCheckValues[field.key] = false;
+        } else if (field.type == 'date') {
+          _customDates[field.key] = null;
+        } else {
+          _customTextControllers[field.key] = TextEditingController();
+        }
+      }
+    }
+
+    setState(() {});
+  }
+
+  String? _validateCustomFields() {
+    final JobType? jobType = _selectedJobType;
+    if (jobType == null) {
+      return null;
+    }
+
+    for (final CustomField field in jobType.customFields) {
+      if (!field.required) {
+        continue;
+      }
+
+      if (field.type == 'select') {
+        final String? selected = _customSelectValues[field.key];
+        if (selected == null || selected.trim().isEmpty) {
+          return 'Completa el campo "${field.label}".';
+        }
+      } else if (field.type == 'check') {
+        if (_customCheckValues[field.key] != true) {
+          return 'Debes marcar "${field.label}".';
+        }
+      } else if (field.type == 'date') {
+        if (_customDates[field.key] == null) {
+          return 'Completa el campo "${field.label}".';
+        }
+      } else {
+        final String value =
+            _customTextControllers[field.key]?.text.trim() ?? '';
+        if (value.isEmpty) {
+          return 'Completa el campo "${field.label}".';
+        }
+      }
+    }
+
+    return null;
+  }
+
+  Map<String, dynamic> _buildCustomAnswers() {
+    final JobType? jobType = _selectedJobType;
+    if (jobType == null) {
+      return <String, dynamic>{};
+    }
+
+    final Map<String, dynamic> answers = <String, dynamic>{};
+
+    for (final CustomField field in jobType.customFields) {
+      if (field.type == 'select') {
+        final String? selected = _customSelectValues[field.key];
+        if (selected != null && selected.trim().isNotEmpty) {
+          answers[field.key] = selected;
+        }
+      } else if (field.type == 'check') {
+        answers[field.key] = _customCheckValues[field.key] ?? false;
+      } else if (field.type == 'date') {
+        final DateTime? date = _customDates[field.key];
+        if (date != null) {
+          answers[field.key] = CustomFieldDate.toApi(date);
+        }
+      } else if (field.type == 'number') {
+        final String raw = _customTextControllers[field.key]?.text.trim() ?? '';
+        if (raw.isNotEmpty) {
+          answers[field.key] = num.tryParse(raw) ?? raw;
+        }
+      } else {
+        final String raw = _customTextControllers[field.key]?.text.trim() ?? '';
+        if (raw.isNotEmpty) {
+          answers[field.key] = raw;
+        }
+      }
+    }
+
+    return answers;
+  }
+
+  Future<void> _pickCustomDate(CustomField field) async {
+    final DateTime now = DateTime.now();
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _customDates[field.key] ?? now,
+      firstDate: DateTime(now.year - 80),
+      lastDate: DateTime(now.year + 20),
+    );
+
+    if (picked == null || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _customDates[field.key] = DateTime(picked.year, picked.month, picked.day);
+    });
+  }
+
+  Widget _buildCustomFieldsSection({required bool enabled}) {
+    final JobType? jobType = _selectedJobType;
+    if (jobType == null || jobType.customFields.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        const SizedBox(height: 16),
+        const Text(
+          'Datos adicionales del tipo de trabajo',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        ...jobType.customFields.map(
+          (CustomField field) => Padding(
+            key: ValueKey<String>('${jobType.key}-${field.key}'),
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildCustomFieldControl(field, enabled: enabled),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomFieldControl(CustomField field, {required bool enabled}) {
+    final String label = field.required ? '${field.label} *' : field.label;
+
+    switch (field.type) {
+      case 'number':
+        return TextFormField(
+          controller: _customTextControllers[field.key],
+          enabled: enabled,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: label,
+            border: const OutlineInputBorder(),
+          ),
+        );
+      case 'date':
+        final DateTime? selected = _customDates[field.key];
+        return InkWell(
+          onTap: enabled ? () => _pickCustomDate(field) : null,
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: label,
+              border: const OutlineInputBorder(),
+              suffixIcon: const Icon(Icons.calendar_today),
+              floatingLabelBehavior: FloatingLabelBehavior.always,
+            ),
+            child: Text(
+              selected == null
+                  ? 'Selecciona una fecha'
+                  : CustomFieldDate.toDisplay(selected),
+              style: TextStyle(
+                color: selected == null ? Theme.of(context).hintColor : null,
+              ),
+            ),
+          ),
+        );
+      case 'select':
+        return DropdownButtonFormField<String>(
+          initialValue: _customSelectValues[field.key],
+          decoration: InputDecoration(
+            labelText: label,
+            border: const OutlineInputBorder(),
+          ),
+          items: field.options
+              .map(
+                (String option) => DropdownMenuItem<String>(
+                  value: option,
+                  child: Text(option),
+                ),
+              )
+              .toList(),
+          onChanged: enabled
+              ? (String? value) {
+                  setState(() {
+                    _customSelectValues[field.key] = value;
+                  });
+                }
+              : null,
+        );
+      case 'check':
+        return CheckboxListTile(
+          value: _customCheckValues[field.key] ?? false,
+          title: Text(label),
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          onChanged: enabled
+              ? (bool? value) {
+                  setState(() {
+                    _customCheckValues[field.key] = value ?? false;
+                  });
+                }
+              : null,
+        );
+      default:
+        return TextFormField(
+          controller: _customTextControllers[field.key],
+          enabled: enabled,
+          decoration: InputDecoration(
+            labelText: label,
+            border: const OutlineInputBorder(),
+          ),
+        );
+    }
+  }
+
   // ============================================================
   // IMAGEN
   // ============================================================
@@ -125,13 +389,26 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       }
 
       setState(() {
-        _photo = image.path;
+        _photo = image.name.trim().isEmpty ? 'image.jpg' : image.name;
+        _photoBytes = null;
         _photoUrl = null;
         _uploadingPhoto = true;
       });
 
+      final Uint8List bytes = await image.readAsBytes();
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _photoBytes = bytes;
+      });
+
       final uploadService = context.read<UploadService>();
-      final uploadedUrl = await uploadService.uploadImage(image.path);
+      final uploadedUrl = await uploadService.uploadImage(
+        bytes: bytes,
+        filename: _photo!,
+      );
 
       if (!mounted) return;
 
@@ -147,6 +424,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
       setState(() {
         _photo = null;
+        _photoBytes = null;
         _photoUrl = null;
       });
 
@@ -195,33 +473,97 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   }
 
   Future<String> _getAddressFromCoordinates(double lat, double lng) async {
+    if (!kIsWeb) {
+      final String fromPlugin = await _addressFromGeocodingPlugin(lat, lng);
+      if (fromPlugin.isNotEmpty) {
+        return fromPlugin;
+      }
+    }
+
+    return _addressFromHttp(lat, lng);
+  }
+
+  Future<String> _addressFromGeocodingPlugin(double lat, double lng) async {
     try {
-      final placemarks = await placemarkFromCoordinates(lat, lng);
+      final List<Placemark> placemarks = await placemarkFromCoordinates(
+        lat,
+        lng,
+      );
 
       if (placemarks.isEmpty) {
         return '';
       }
 
-      final place = placemarks.first;
-
-      final parts = <String>[
-        if (place.street != null && place.street!.trim().isNotEmpty)
-          place.street!.trim(),
-        if (place.subLocality != null &&
-            place.subLocality!.trim().isNotEmpty)
-          place.subLocality!.trim(),
-        if (place.locality != null && place.locality!.trim().isNotEmpty)
-          place.locality!.trim(),
-        if (place.administrativeArea != null &&
-            place.administrativeArea!.trim().isNotEmpty)
-          place.administrativeArea!.trim(),
-      ];
-
-      return parts.join(', ');
+      final Placemark place = placemarks.first;
+      return _joinAddressParts(<String?>[
+        place.street,
+        place.subLocality,
+        place.locality,
+        place.administrativeArea,
+      ]);
     } catch (e) {
       debugPrint('ERROR OBTENIENDO DIRECCIÓN: $e');
-
       return '';
+    }
+  }
+
+  Future<String> _addressFromHttp(double lat, double lng) async {
+    try {
+      final Dio dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 8),
+        ),
+      );
+
+      final Response<dynamic> response = await dio.get<dynamic>(
+        'https://api.bigdatacloud.net/data/reverse-geocode-client',
+        queryParameters: <String, dynamic>{
+          'latitude': lat,
+          'longitude': lng,
+          'localityLanguage': 'es',
+        },
+      );
+
+      final Object? data = response.data;
+      if (data is! Map) {
+        return '';
+      }
+
+      final Map<String, dynamic> json = Map<String, dynamic>.from(data);
+      return _joinAddressParts(<String?>[
+        json['locality']?.toString(),
+        json['city']?.toString(),
+        json['principalSubdivision']?.toString(),
+        json['countryName']?.toString(),
+      ]);
+    } catch (e) {
+      debugPrint('ERROR OBTENIENDO DIRECCIÓN HTTP: $e');
+      return '';
+    }
+  }
+
+  String _joinAddressParts(List<String?> values) {
+    final List<String> parts = <String>[];
+    for (final String? value in values) {
+      final String trimmed = value?.trim() ?? '';
+      if (trimmed.isEmpty || parts.contains(trimmed)) {
+        continue;
+      }
+      parts.add(trimmed);
+    }
+    return parts.join(', ');
+  }
+
+  void _applyPickedLocation({
+    required double lat,
+    required double lng,
+    required String address,
+  }) {
+    _latController.text = lat.toString();
+    _lngController.text = lng.toString();
+    if (address.trim().isNotEmpty) {
+      _addressController.text = address.trim();
     }
   }
 
@@ -253,14 +595,12 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       if (!mounted) return;
 
       setState(() {
-        _latController.text = lat.toString();
-        _lngController.text = lng.toString();
-        _addressController.text = address;
+        _applyPickedLocation(lat: lat, lng: lng, address: address);
       });
 
       if (address.isEmpty) {
         _showMessage(
-          'Ubicación obtenida, pero no se pudo determinar la dirección.',
+          'Ubicación obtenida. Escribe la dirección del trabajo.',
         );
       }
     } catch (e) {
@@ -338,14 +678,12 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       if (!mounted) return;
 
       setState(() {
-        _latController.text = lat.toString();
-        _lngController.text = lng.toString();
-        _addressController.text = address;
+        _applyPickedLocation(lat: lat, lng: lng, address: address);
       });
 
       if (address.isEmpty) {
         _showMessage(
-          'Ubicación seleccionada, pero no se pudo obtener la dirección.',
+          'Ubicación seleccionada. Escribe la dirección del trabajo.',
         );
       }
     } catch (e) {
@@ -366,9 +704,9 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   void _showMessage(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   // ============================================================
@@ -390,14 +728,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
         _deadline = picked;
       });
     }
-  }
-
-  // Added methods for managing question updates and options
-  // Update label of a question
-  void _updateQuestionLabel(int index, String value) {
-    setState(() {
-      _questions[index].labelController.text = value;
-    });
   }
 
   // Update type of a question and clear options if not applicable
@@ -494,7 +824,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
             ),
             TextFormField(
               controller: question.labelController,
-              onChanged: (val) => _updateQuestionLabel(index, val),
               decoration: const InputDecoration(
                 labelText: 'Texto de la pregunta',
                 border: OutlineInputBorder(),
@@ -578,106 +907,70 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   // MODAL DE CONFIRMACIÓN DE PAGO
   // ============================================================
 
-  Future<_PaymentConfirmationResult?> _showPaymentConfirmationDialog({
-    required double amount,
-    required String currency,
-  }) {
-    return showDialog<_PaymentConfirmationResult>(
+  Future<bool> _confirmPublicationFee() async {
+    final bool? confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('Confirmar pago'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Monto a pagar: \$1 USD',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  initialValue: '4242424242424232',
-                  readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Número de tarjeta',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        initialValue: '12',
-                        readOnly: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Mes exp.',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextFormField(
-                        initialValue: '2030',
-                        readOnly: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Año exp.',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextFormField(
-                        initialValue: '123',
-                        readOnly: true,
-                        decoration: const InputDecoration(
-                          labelText: 'CVV',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  initialValue: 'Proveedor',
-                  readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Titular de la tarjeta',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
+          title: const Text('Costo de publicación'),
+          content: const Text(
+            'Publicar esta oferta tiene un costo de US\$1.00.',
           ),
-          actions: [
+          actions: <Widget>[
             TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(null);
-              },
-              child: const Text('Rechazar'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
             ),
-            ElevatedButton(
-              onPressed: () {
-                final result = _PaymentConfirmationResult(
-                  cardNumber: '4242424242424242',
-                  cvv: '123',
-                  expMonth: 12,
-                  expYear: 2030,
-                  cardholder: 'Proveedor',
-                );
-
-                Navigator.of(dialogContext).pop(result);
-              },
-              child: const Text('Aceptar'),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Continuar al pago'),
             ),
           ],
         );
+      },
+    );
+
+    return confirmed == true;
+  }
+
+  Future<void> _showPublishSuccessDialog() async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Oferta publicada correctamente'),
+          content: const Text(
+            'El pago de US\$1.00 fue aprobado y tu oferta ya fue publicada.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cerrar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                if (!context.mounted) {
+                  return;
+                }
+                context.goNamed(AppRouteNames.jobPostingMyOffers);
+              },
+              child: const Text('Ver mis publicaciones'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<_PaymentConfirmationResult?> _showCardPaymentDialog() {
+    return showDialog<_PaymentConfirmationResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return const _CardPaymentDialog();
       },
     );
   }
@@ -687,6 +980,12 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   // ============================================================
 
   Future<void> _submit() async {
+    if (context.read<CreateOfferViewModel>().isSubmitting ||
+        context.read<MakePaymentViewModel>().isSubmitting ||
+        _publishing ||
+        _publishedSuccessfully) {
+      return;
+    }
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -712,97 +1011,143 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       return;
     }
 
+    final String? customFieldError = _validateCustomFields();
+    if (customFieldError != null) {
+      _showMessage(customFieldError);
+      return;
+    }
+
     final String? questionError = _validateAdditionalQuestions();
     if (questionError != null) {
       _showMessage(questionError);
       return;
     }
 
-    final amount = double.tryParse(_amountController.text.trim());
+    final double? amount = double.tryParse(_amountController.text.trim());
     if (amount == null || amount <= 0) {
-      _showMessage('El monto debe ser válido.');
+      _showMessage('El salario del trabajo debe ser válido.');
       return;
     }
 
-    final currency = _currencyController.text.trim();
+    final String currency = _currencyController.text.trim();
+    if (currency.isEmpty) {
+      _showMessage('Indica la moneda del salario.');
+      return;
+    }
 
     final List<OfferQuestion> questions = _questions
         .where((q) => q.labelController.text.trim().isNotEmpty)
         .map((q) => q.toOfferQuestion())
         .toList();
 
-    // Se muestra el modal de confirmación antes de procesar el pago.
-    final confirmation = await _showPaymentConfirmationDialog(
-      amount: amount,
-      currency: currency,
-    );
+    final Map<String, dynamic> customAnswers = _buildCustomAnswers();
 
-    if (!mounted) return;
+    final bool continueToPayment = await _confirmPublicationFee();
+    if (!mounted) {
+      return;
+    }
+    if (!continueToPayment) {
+      return;
+    }
 
+    final _PaymentConfirmationResult? confirmation =
+        await _showCardPaymentDialog();
+    if (!mounted) {
+      return;
+    }
     if (confirmation == null) {
-      _showMessage('Pago rechazado por el usuario.');
       return;
     }
 
-    final createOfferViewModel = context.read<CreateOfferViewModel>();
+    setState(() {
+      _publishing = true;
+    });
 
-    final paymentViewModel = context.read<MakePaymentViewModel>();
+    final CreateOfferViewModel createOfferViewModel = context
+        .read<CreateOfferViewModel>();
+    final MakePaymentViewModel paymentViewModel = context
+        .read<MakePaymentViewModel>();
 
-    final paymentOk = await paymentViewModel.pay(
-      amount: amount,
-      currency: currency,
-      cardNumber: confirmation.cardNumber,
-      cvv: confirmation.cvv,
-      expMonth: confirmation.expMonth,
-      expYear: confirmation.expYear,
-      cardholder: confirmation.cardholder,
-    );
-
-    if (!mounted) return;
-
-    if (!paymentOk) {
-      _showMessage(paymentViewModel.errorMessage ?? 'No se pudo realizar el pago');
-      return;
-    }
-
-    final payment = paymentViewModel.payment;
-
-    if (payment == null || payment.id.isEmpty) {
-      _showMessage('El pago fue realizado, pero no se recibió su ID');
-      return;
-    }
-
-    final offerOk = await createOfferViewModel.submit(
-      jobTypeKey: _jobTypeKey!,
-      contractType: _contractType!,
-      description: _descriptionController.text.trim(),
-      address: _addressController.text.trim(),
-
-      // Se envía la URL pública, no la ruta local.
-      photo: _photoUrl,
-
-      paymentId: payment.id,
-      lat: double.parse(_latController.text.trim()),
-      lng: double.parse(_lngController.text.trim()),
-      amount: amount,
-      currency: currency,
-      deadline: _deadline!,
-      questions: questions,
-    );
-
-    if (!mounted) return;
-
-    if (offerOk) {
-      context.read<ExploreOffersViewModel>().load();
-
-      _showMessage('Pago realizado y oferta publicada correctamente');
-
-      Navigator.of(context).pop();
-    } else {
-      _showMessage(
-        createOfferViewModel.errorMessage ??
-            'El pago se realizó, pero no se pudo publicar la oferta',
+    try {
+      final bool paymentOk = await paymentViewModel.pay(
+        cardNumber: confirmation.cardNumber,
+        cvv: confirmation.cvv,
+        expMonth: confirmation.expMonth,
+        expYear: confirmation.expYear,
+        cardholder: confirmation.cardholder,
       );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (!paymentOk) {
+        _showMessage(
+          paymentViewModel.errorMessage ??
+              'El pago fue rechazado. Verifica los datos de la tarjeta '
+                  'o utiliza otra tarjeta.',
+        );
+        return;
+      }
+
+      final payment = paymentViewModel.payment;
+
+      if (payment == null || payment.id.isEmpty) {
+        _showMessage('El pago fue realizado, pero no se recibió su ID');
+        return;
+      }
+
+      final bool offerOk = await createOfferViewModel.submit(
+        jobTypeKey: _jobTypeKey!,
+        contractType: _contractType!,
+        description: _descriptionController.text.trim(),
+        address: _addressController.text.trim(),
+        photo: _photoUrl,
+        paymentId: payment.id,
+        lat: double.parse(_latController.text.trim()),
+        lng: double.parse(_lngController.text.trim()),
+        amount: amount,
+        currency: currency,
+        deadline: _deadline!,
+        customAnswers: customAnswers,
+        questions: questions,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (!offerOk) {
+        _showMessage(
+          createOfferViewModel.errorMessage ??
+              'El pago se realizó, pero no se pudo publicar la oferta',
+        );
+        return;
+      }
+
+      await createOfferViewModel.verifyCreatedOfferInMyOffers();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _publishedSuccessfully = true;
+      });
+
+      try {
+        context.read<ExploreOffersViewModel>().load();
+      } catch (error) {
+        debugPrint('No se pudo refrescar explorar ofertas: $error');
+      }
+
+      await _showPublishSuccessDialog();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _publishing = false;
+        });
+      }
     }
   }
 
@@ -816,10 +1161,12 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
     final paymentViewModel = context.watch<MakePaymentViewModel>();
 
-    final isLoading = createOfferViewModel.isSubmitting ||
+    final isLoading =
+        createOfferViewModel.isSubmitting ||
         paymentViewModel.isSubmitting ||
         _loadingLocation ||
-        _uploadingPhoto;
+        _uploadingPhoto ||
+        _publishing;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Publicar oferta')),
@@ -832,7 +1179,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
               // TIPO DE TRABAJO
               // ==================================================
-
               if (_loadingJobTypes)
                 const Center(
                   child: Padding(
@@ -870,13 +1216,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
                         ),
                       )
                       .toList(),
-                  onChanged: isLoading
-                      ? null
-                      : (value) {
-                          setState(() {
-                            _jobTypeKey = value;
-                          });
-                        },
+                  onChanged: isLoading ? null : _onJobTypeChanged,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Selecciona un tipo de trabajo';
@@ -886,12 +1226,13 @@ class _CreateOfferViewState extends State<CreateOfferView> {
                   },
                 ),
 
+              _buildCustomFieldsSection(enabled: !isLoading),
+
               const SizedBox(height: 12),
 
               // ==================================================
               // TIPO DE CONTRATO
               // ==================================================
-
               DropdownButtonFormField<String>(
                 initialValue: _contractType,
                 decoration: const InputDecoration(
@@ -924,7 +1265,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
               // DESCRIPCIÓN
               // ==================================================
-
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 4,
@@ -946,7 +1286,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
               // UBICACIÓN
               // ==================================================
-
               const Text(
                 'Ubicación del trabajo',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -956,16 +1295,16 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
               TextFormField(
                 controller: _addressController,
-                readOnly: true,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
                   labelText: 'Dirección',
-                  hintText: 'Selecciona una ubicación',
+                  hintText: 'Calle, sector o ciudad',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.location_on),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Selecciona una ubicación';
+                    return 'Indica la dirección del trabajo';
                   }
 
                   return null;
@@ -1005,7 +1344,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
               // LATITUD / LONGITUD
               // ==================================================
-
               Row(
                 children: [
                   Expanded(
@@ -1037,16 +1375,16 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
               // MONTO
               // ==================================================
-
               Row(
                 children: [
                   Expanded(
                     child: TextFormField(
                       controller: _amountController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: const InputDecoration(
-                        labelText: 'Monto',
+                        labelText: 'Salario del trabajo',
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -1056,7 +1394,7 @@ class _CreateOfferViewState extends State<CreateOfferView> {
                     child: TextFormField(
                       controller: _currencyController,
                       decoration: const InputDecoration(
-                        labelText: 'Moneda',
+                        labelText: 'Moneda del salario',
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -1069,7 +1407,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
               // FOTO
               // ==================================================
-
               const Text(
                 'Foto del trabajo',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -1077,11 +1414,11 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
               const SizedBox(height: 8),
 
-              if (_photo != null)
+              if (_photoBytes != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(_photo!),
+                  child: Image.memory(
+                    _photoBytes!,
                     height: 200,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -1117,8 +1454,8 @@ class _CreateOfferViewState extends State<CreateOfferView> {
                     _uploadingPhoto
                         ? 'Subiendo imagen...'
                         : _photo == null
-                            ? 'Seleccionar foto'
-                            : 'Cambiar foto',
+                        ? 'Seleccionar foto'
+                        : 'Cambiar foto',
                   ),
                 ),
               ),
@@ -1152,17 +1489,26 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
               // FECHA
               // ==================================================
-
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  _deadline == null
-                      ? 'Selecciona fecha límite'
-                      : 'Fecha límite: '
-                          '${_deadline!.toLocal()}'.split(' ').first,
-                ),
-                trailing: const Icon(Icons.calendar_today),
+              InkWell(
                 onTap: isLoading ? null : _pickDeadline,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Fecha límite',
+                    border: OutlineInputBorder(),
+                    suffixIcon: Icon(Icons.calendar_today),
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                  ),
+                  child: Text(
+                    _deadline == null
+                        ? 'Selecciona una fecha'
+                        : CustomFieldDate.toDisplay(_deadline!),
+                    style: TextStyle(
+                      color: _deadline == null
+                          ? Theme.of(context).hintColor
+                          : null,
+                    ),
+                  ),
+                ),
               ),
 
               const SizedBox(height: 20),
@@ -1170,7 +1516,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
               // PREGUNTAS ADICIONALES
               // ==================================================
-
               const Text(
                 'Preguntas adicionales (opcional)',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -1182,10 +1527,9 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               ),
               const SizedBox(height: 8),
 
-              ..._questions
-                  .asMap()
-                  .entries
-                  .map((e) => _buildQuestionCard(e.key)),
+              ..._questions.asMap().entries.map(
+                (e) => _buildQuestionCard(e.key),
+              ),
 
               OutlinedButton.icon(
                 onPressed: isLoading ? null : _addQuestion,
@@ -1198,7 +1542,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
               // ERROR
               // ==================================================
-
               if (createOfferViewModel.status == CreateOfferStatus.error &&
                   createOfferViewModel.errorMessage != null)
                 Text(
@@ -1211,15 +1554,18 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               // ==================================================
               // BOTÓN PUBLICAR
               // ==================================================
-
               if (isLoading)
                 const Center(child: CircularProgressIndicator())
               else
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _submit,
-                    child: const Text('Pagar y publicar oferta'),
+                    onPressed: _publishedSuccessfully ? null : _submit,
+                    child: Text(
+                      _publishedSuccessfully
+                          ? 'Oferta publicada'
+                          : 'Publicar oferta',
+                    ),
                   ),
                 ),
             ],
@@ -1235,19 +1581,209 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 // ================================================================
 
 class _PaymentConfirmationResult {
-  final String cardNumber;
-  final String cvv;
-  final int expMonth;
-  final int expYear;
-  final String cardholder;
-
-  _PaymentConfirmationResult({
+  const _PaymentConfirmationResult({
     required this.cardNumber,
     required this.cvv,
     required this.expMonth,
     required this.expYear,
-    required this.cardholder,
+    this.cardholder,
   });
+
+  final String cardNumber;
+  final String cvv;
+  final int expMonth;
+  final int expYear;
+  final String? cardholder;
+}
+
+class _CardPaymentDialog extends StatefulWidget {
+  const _CardPaymentDialog();
+
+  @override
+  State<_CardPaymentDialog> createState() => _CardPaymentDialogState();
+}
+
+class _TestCard {
+  const _TestCard({
+    required this.label,
+    required this.number,
+    required this.cvv,
+    required this.expMonth,
+    required this.expYear,
+  });
+
+  final String label;
+  final String number;
+  final String cvv;
+  final int expMonth;
+  final int expYear;
+}
+
+const List<_TestCard> _testCards = <_TestCard>[
+  _TestCard(
+    label: 'Prueba aprobada — 4242 4242 4242 4242',
+    number: '4242424242424242',
+    cvv: '123',
+    expMonth: 12,
+    expYear: 2030,
+  ),
+  _TestCard(
+    label: 'Prueba rechazada — 4000 0000 0000 0002',
+    number: '4000000000000002',
+    cvv: '123',
+    expMonth: 12,
+    expYear: 2030,
+  ),
+];
+
+class _CardPaymentDialogState extends State<_CardPaymentDialog> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _cardholderController = TextEditingController();
+  final TextEditingController _expMonthController = TextEditingController();
+  final TextEditingController _expYearController = TextEditingController();
+  final TextEditingController _cvvController = TextEditingController();
+  _TestCard? _selectedCard;
+
+  @override
+  void dispose() {
+    _cardholderController.dispose();
+    _expMonthController.dispose();
+    _expYearController.dispose();
+    _cvvController.dispose();
+    super.dispose();
+  }
+
+  void _applyTestCard(_TestCard? card) {
+    setState(() {
+      _selectedCard = card;
+      if (card == null) {
+        _expMonthController.clear();
+        _expYearController.clear();
+        _cvvController.clear();
+        return;
+      }
+
+      _expMonthController.text = card.expMonth.toString().padLeft(2, '0');
+      _expYearController.text = card.expYear.toString();
+      _cvvController.text = card.cvv;
+    });
+  }
+
+  void _submit() {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final _TestCard selectedCard = _selectedCard!;
+    Navigator.of(context).pop(
+      _PaymentConfirmationResult(
+        cardNumber: selectedCard.number,
+        cvv: selectedCard.cvv,
+        expMonth: selectedCard.expMonth,
+        expYear: selectedCard.expYear,
+        cardholder: _cardholderController.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Pago de publicación'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text(
+                'Costo: US\$1.00',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<_TestCard>(
+                value: _selectedCard,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Número de tarjeta',
+                  border: OutlineInputBorder(),
+                ),
+                hint: const Text('Selecciona una tarjeta de prueba'),
+                items: _testCards.map((_TestCard card) {
+                  return DropdownMenuItem<_TestCard>(
+                    value: card,
+                    child: Text(card.label, overflow: TextOverflow.ellipsis),
+                  );
+                }).toList(),
+                onChanged: _applyTestCard,
+                validator: (_TestCard? value) {
+                  if (value == null) {
+                    return 'Selecciona una tarjeta de prueba';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _cardholderController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre del titular',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: TextFormField(
+                      controller: _expMonthController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Mes',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _expYearController,
+                      readOnly: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Año',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _cvvController,
+                      readOnly: true,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'CVV',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Pagar US\$1.00')),
+      ],
+    );
+  }
 }
 
 // ================================================================
@@ -1299,9 +1835,9 @@ class _OfferQuestionForm {
       required: required,
       options: _typeSupportsOptions(type)
           ? optionControllers
-              .map((c) => c.text.trim())
-              .where((o) => o.isNotEmpty)
-              .toList()
+                .map((c) => c.text.trim())
+                .where((o) => o.isNotEmpty)
+                .toList()
           : const [],
     );
   }
@@ -1374,8 +1910,7 @@ class _MapLocationPickerState extends State<_MapLocationPicker> {
               ),
               children: [
                 TileLayer(
-                  urlTemplate:
-                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'do.edu.itla.ocupa2',
                 ),
                 MarkerLayer(

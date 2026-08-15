@@ -13,6 +13,10 @@ class ContractComment {
   final DateTime? createdAt;
 
   factory ContractComment.fromJson(Object? json) {
+    if (json is String && json.trim().isNotEmpty) {
+      return ContractComment(body: json.trim());
+    }
+
     final Map<String, dynamic> map = requireJsonObject(
       json,
       context: 'Un comentario de contrato',
@@ -26,8 +30,13 @@ class ContractComment {
     }
 
     ContractParty? author;
-    final Object? rawAuthor = map['by'] ?? map['author'] ?? map['user'];
-    if (rawAuthor != null) {
+    final Object? rawAuthor =
+        map['by'] ?? map['author'] ?? map['user'] ?? map['createdBy'] ?? map['from'];
+    if (rawAuthor is String && rawAuthor.trim().isNotEmpty) {
+      author = ContractParty(id: rawAuthor.trim(), nombre: rawAuthor.trim());
+    } else if (rawAuthor is num) {
+      author = ContractParty(id: rawAuthor.toString(), nombre: '');
+    } else if (rawAuthor != null) {
       try {
         author = ContractParty.fromJson(rawAuthor);
       } catch (_) {
@@ -35,15 +44,50 @@ class ContractComment {
       }
     }
 
-    final Object? rawCreatedAt = map['createdAt'] ?? map['date'] ?? map['timestamp'];
-    final DateTime? date = rawCreatedAt is String
-        ? DateTime.tryParse(rawCreatedAt.trim())
-        : null;
+    final String? userId = asText(map['userId']) ??
+        asText(map['authorId']) ??
+        asText(map['createdById']);
+    final String? rootName = asText(map['nombre']) ?? asText(map['name']);
+    final String? firstName = asText(map['firstName']);
+    final String? lastName = asText(map['lastName']);
+    final String composedName = <String?>[firstName, lastName]
+        .where((String? value) => value != null && value.isNotEmpty)
+        .join(' ');
+    final String resolvedName = (rootName != null && rootName.isNotEmpty)
+        ? rootName
+        : composedName;
+
+    if (author == null && (userId != null || resolvedName.isNotEmpty)) {
+      author = ContractParty(
+        id: userId ?? 'unknown-party',
+        nombre: resolvedName,
+      );
+    } else if (author != null &&
+        (author.nombre.isEmpty || author.nombre == 'Usuario') &&
+        resolvedName.isNotEmpty) {
+      author = ContractParty(
+        id: author.id,
+        nombre: resolvedName,
+        email: author.email,
+      );
+    }
 
     return ContractComment(
-      body: asText(map['body']) ?? asText(map['message']) ?? 'Comentario',
+      body: asText(map['body']) ?? asText(map['message']) ?? asText(map['text']) ?? 'Comentario',
       by: author,
-      createdAt: date,
+      createdAt: _parseDate(map['createdAt'] ?? map['date'] ?? map['timestamp']),
     );
   }
+}
+
+DateTime? _parseDate(Object? raw) {
+  if (raw is DateTime) return raw;
+  if (raw is int) {
+    if (raw > 9999999999) {
+      return DateTime.fromMillisecondsSinceEpoch(raw);
+    }
+    return DateTime.fromMillisecondsSinceEpoch(raw * 1000);
+  }
+  if (raw is String) return DateTime.tryParse(raw.trim());
+  return null;
 }

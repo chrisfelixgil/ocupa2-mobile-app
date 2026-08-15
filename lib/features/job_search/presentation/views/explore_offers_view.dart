@@ -222,7 +222,32 @@ class _Body extends StatelessWidget {
 
   Widget _buildOffersList(BuildContext context) {
     if (viewModel.offers.isEmpty) {
-      return const Center(child: Text('No hay ofertas disponibles por ahora.'));
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                viewModel.hiddenOwnCount > 0
+                    ? 'No hay ofertas de otros usuarios por ahora.\n'
+                        'Tus ${viewModel.hiddenOwnCount} publicaciones no se muestran aquí porque son tuyas.'
+                    : 'No hay ofertas disponibles por ahora.',
+                textAlign: TextAlign.center,
+              ),
+              if (viewModel.hiddenOwnCount > 0) ...<Widget>[
+                const SizedBox(height: AppSpacing.md),
+                OutlinedButton(
+                  onPressed: () {
+                    context.goNamed(AppRouteNames.jobPostingMyOffers);
+                  },
+                  child: const Text('Ver mis publicaciones'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
     }
 
     return RefreshIndicator(
@@ -235,11 +260,21 @@ class _Body extends StatelessWidget {
 
           return OfferCard(
             offer: offer,
-            onTap: () {
-              context.pushNamed(
+            onTap: () async {
+              final Object? applied = await context.pushNamed(
                 AppRouteNames.jobSearchOfferDetail,
                 pathParameters: <String, String>{'id': offer.id},
               );
+
+              if (!context.mounted) {
+                return;
+              }
+
+              if (applied == true) {
+                viewModel.hideOffer(offer.id);
+              }
+
+              await viewModel.load();
             },
           );
         },

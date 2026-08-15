@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:ocupa2/core/network/api_exception.dart';
@@ -71,7 +71,10 @@ abstract final class ErrorMapper {
       );
     }
 
-    final String? serverMessage = _extractServerMessage(responseData);
+    final String? serverMessage = _humanizeServerMessage(
+      exception.requestOptions.path,
+      _extractServerMessage(responseData),
+    );
 
     switch (statusCode) {
       case 400:
@@ -121,6 +124,17 @@ abstract final class ErrorMapper {
           originalError: exception,
         );
 
+      case 402:
+        return ApiException(
+          type: ApiExceptionType.paymentRequired,
+          statusCode: statusCode,
+          message: _paymentRequiredMessage(
+            exception.requestOptions.path,
+            serverMessage,
+          ),
+          originalError: exception,
+        );
+
       case 422:
         return ApiException(
           type: ApiExceptionType.validation,
@@ -141,6 +155,50 @@ abstract final class ErrorMapper {
           originalError: exception,
         );
     }
+  }
+
+  static String _paymentRequiredMessage(String path, String? serverMessage) {
+    final String normalizedPath = path.toLowerCase();
+    final bool fromOffer = normalizedPath.contains('offer');
+    final String fallback = fromOffer
+        ? 'No se pudo publicar la oferta. El pago no es válido o es requerido.'
+        : 'El pago fue rechazado. Verifica los datos de la tarjeta '
+              'o utiliza otra tarjeta.';
+
+    if (serverMessage == null) {
+      return fallback;
+    }
+
+    final String lowered = serverMessage.toLowerCase();
+    if (lowered.contains('error 402') ||
+        lowered.contains('inesperado') ||
+        lowered.contains('unexpected')) {
+      return fallback;
+    }
+
+    return serverMessage;
+  }
+
+  static String? _humanizeServerMessage(String path, String? serverMessage) {
+    if (serverMessage == null) {
+      return null;
+    }
+
+    final String loweredPath = path.toLowerCase();
+    final String loweredMessage = serverMessage.toLowerCase();
+    final bool isApplyRequest = loweredPath.contains('/apply');
+    final bool mentionsCommentField =
+        loweredMessage.contains("'comment'") ||
+        loweredMessage.contains('"comment"') ||
+        loweredMessage.contains('campo comment') ||
+        loweredMessage.contains('field comment');
+
+    if (isApplyRequest && mentionsCommentField) {
+      return 'Explica con más detalle por qué eres apto para este puesto. '
+          'Escribe al menos unas oraciones sobre tu experiencia o habilidades.';
+    }
+
+    return serverMessage;
   }
 
   static String? _extractServerMessage(Object? responseData) {

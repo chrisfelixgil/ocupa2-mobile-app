@@ -54,29 +54,54 @@ class _MyContractsViewState extends State<MyContractsView> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: <Widget>[
-                      FilterChip(
+                      ChoiceChip(
                         selected: viewModel.selectedFilter == 'all',
                         label: const Text('Todos'),
-                        onSelected: (_) => viewModel.setFilter('all'),
+                        onSelected: (bool selected) {
+                          if (selected) {
+                            viewModel.setFilter('all');
+                          }
+                        },
                       ),
                       const SizedBox(width: AppSpacing.xs),
-                      FilterChip(
+                      ChoiceChip(
                         selected: viewModel.selectedFilter == 'active',
                         label: const Text('Activos'),
-                        onSelected: (_) => viewModel.setFilter('active'),
+                        onSelected: (bool selected) {
+                          if (selected) {
+                            viewModel.setFilter('active');
+                          }
+                        },
                       ),
                       const SizedBox(width: AppSpacing.xs),
-                      FilterChip(
-                        selected: viewModel.selectedFilter == 'inactive',
-                        label: const Text('Inactivos / Finalizados'),
-                        onSelected: (_) => viewModel.setFilter('inactive'),
+                      ChoiceChip(
+                        selected: viewModel.selectedFilter == 'pending',
+                        label: const Text('Pendientes'),
+                        onSelected: (bool selected) {
+                          if (selected) {
+                            viewModel.setFilter('pending');
+                          }
+                        },
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      ChoiceChip(
+                        selected: viewModel.selectedFilter == 'closed',
+                        label: const Text('Rechazados / Cancelados'),
+                        onSelected: (bool selected) {
+                          if (selected) {
+                            viewModel.setFilter('closed');
+                          }
+                        },
                       ),
                     ],
                   ),
                 ),
               ),
               Expanded(
-                child: _ContractsList(contracts: viewModel.contracts),
+                child: _ContractsList(
+                  contracts: viewModel.contracts,
+                  selectedFilter: viewModel.selectedFilter,
+                ),
               ),
             ],
           ),
@@ -86,14 +111,18 @@ class _MyContractsViewState extends State<MyContractsView> {
 }
 
 class _ContractsList extends StatelessWidget {
-  const _ContractsList({required this.contracts});
+  const _ContractsList({
+    required this.contracts,
+    required this.selectedFilter,
+  });
 
   final List<Contract> contracts;
+  final String selectedFilter;
 
   @override
   Widget build(BuildContext context) {
     if (contracts.isEmpty) {
-      return const _EmptyState();
+      return _EmptyState(selectedFilter: selectedFilter);
     }
 
     return RefreshIndicator(
@@ -121,8 +150,11 @@ class _ContractCard extends StatelessWidget {
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          context.push(RoutePaths.contractDetail(contract.id));
+        onTap: () async {
+          await context.push(RoutePaths.contractDetail(contract.id));
+          if (context.mounted) {
+            await context.read<ContractsViewModel>().refresh();
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -235,7 +267,7 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (Color bgColor, Color fgColor, IconData icon) =
-        switch (status.toLowerCase().trim()) {
+        switch (Contract.normalizeStatus(status)) {
       'active' => (
           AppColors.successSurface,
           AppColors.success,
@@ -250,6 +282,11 @@ class _StatusChip extends StatelessWidget {
           AppColors.errorSurface,
           AppColors.error,
           Icons.highlight_off_rounded
+        ),
+      'cancelled' => (
+          const Color(0xFFEEEEEE),
+          Colors.grey.shade700,
+          Icons.cancel_outlined
         ),
       _ => (
           const Color(0xFFEEEEEE),
@@ -287,28 +324,37 @@ class _StatusChip extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({required this.selectedFilter});
+
+  final String selectedFilter;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final String message = switch (selectedFilter) {
+      'active' => 'No tienes contratos activos.',
+      'pending' => 'No tienes contratos pendientes.',
+      'closed' => 'No tienes contratos rechazados o cancelados.',
+      _ => 'No tienes contratos en esta sección.',
+    };
+
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(AppSpacing.xl),
+        padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(
+            const Icon(
               Icons.gavel_outlined,
               size: 64,
               color: AppColors.terracotta,
             ),
-            SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.md),
             Text(
-              'No tienes contratos en esta sección.',
+              message,
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: AppSpacing.sm),
-            Text(
+            const SizedBox(height: AppSpacing.sm),
+            const Text(
               'Los contratos se generan automáticamente al seleccionar un ganador en una oferta.',
               textAlign: TextAlign.center,
             ),

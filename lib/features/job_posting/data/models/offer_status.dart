@@ -1,17 +1,29 @@
 /// AJUSTAR: valores reales que devuelve el backend para el status de una
-/// oferta. Se asumen 'active' / 'inactive' porque el endpoint expuesto es
-/// POST /offers/{id}/deactivate.
+/// oferta. El endpoint de baja es POST /offers/{id}/deactivate.
+///
+/// El API puede enviar `active`, `published` o omitir el campo. Solo
+/// `inactive` se oculta en Mis ofertas.
 enum OfferStatus { active, inactive, unknown }
 
 OfferStatus offerStatusFromString(String? value) {
-  switch (value) {
-    case 'active':
-      return OfferStatus.active;
+  switch (value?.trim().toLowerCase()) {
     case 'inactive':
+    case 'deactivated':
+    case 'disabled':
       return OfferStatus.inactive;
+    case 'active':
+    case 'published':
+    case 'open':
+    case null:
+    case '':
+      return OfferStatus.active;
     default:
-      return OfferStatus.unknown;
+      return OfferStatus.active;
   }
+}
+
+bool isListedInMyOffers(OfferStatus status) {
+  return status != OfferStatus.inactive;
 }
 
 extension OfferStatusX on OfferStatus {

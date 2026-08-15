@@ -30,6 +30,7 @@ class ExploreOffersViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? _jobTypeFilter;
   String? _contractTypeFilter;
+  int _hiddenOwnCount = 0;
   bool _isDisposed = false;
 
   ExploreOffersStatus get status => _status;
@@ -42,7 +43,21 @@ class ExploreOffersViewModel extends ChangeNotifier {
 
   String? get contractTypeFilter => _contractTypeFilter;
 
+  /// Ofertas propias ocultas en explorar (no se puede aplicar a las tuyas).
+  int get hiddenOwnCount => _hiddenOwnCount;
+
   bool get isLoading => _status == ExploreOffersStatus.loading;
+
+  void hideOffer(String offerId) {
+    if (offerId.isEmpty) {
+      return;
+    }
+
+    _offers = _offers
+        .where((Offer offer) => offer.id != offerId)
+        .toList();
+    notifyListeners();
+  }
 
   Future<void> load() async {
     if (_isDisposed) {
@@ -78,13 +93,26 @@ class ExploreOffersViewModel extends ChangeNotifier {
         return;
       }
 
-      final Set<String> appliedOfferIds = myApplications
-          .map((Application application) => application.offerId)
-          .whereType<String>()
-          .toSet();
+      final Set<String> appliedOfferIds = <String>{};
+      for (final Application application in myApplications) {
+        final String? fromField = application.offerId;
+        if (fromField != null && fromField.isNotEmpty) {
+          appliedOfferIds.add(fromField);
+        }
+
+        final String? fromOffer = application.offer?.id;
+        if (fromOffer != null && fromOffer.isNotEmpty) {
+          appliedOfferIds.add(fromOffer);
+        }
+      }
       final Set<String> myOfferIds = myOffers
           .map((posting_offer.Offer offer) => offer.id)
+          .where((String id) => id.isNotEmpty)
           .toSet();
+
+      _hiddenOwnCount = offers
+          .where((Offer offer) => myOfferIds.contains(offer.id))
+          .length;
 
       _offers = offers
           .where(

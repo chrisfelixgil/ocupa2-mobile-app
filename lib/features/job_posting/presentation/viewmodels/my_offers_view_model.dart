@@ -31,8 +31,9 @@ class MyOffersViewModel extends ChangeNotifier {
     try {
       final allOffers = await _jobPostingRepository.getMyOffers();
       // El backend solo desactiva (status → inactive), no elimina.
-      // Filtramos las inactivas para que no reaparezcan al recargar.
-      _offers = allOffers.where((o) => o.status == OfferStatus.active).toList();
+      // Mostramos todo lo que no esté inactivo (`published`, `active`,
+      // status ausente, etc.). Un filtro solo-`active` ocultaba ofertas nuevas.
+      _offers = allOffers.where((o) => isListedInMyOffers(o.status)).toList();
       _status = MyOffersStatus.loaded;
     } catch (e) {
       _errorMessage = e.toString();

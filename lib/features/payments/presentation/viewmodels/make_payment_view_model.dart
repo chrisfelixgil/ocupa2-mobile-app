@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:ocupa2/core/network/api_exception.dart';
 
 import '../../data/models/payment.dart';
 import '../../data/models/payment_request.dart';
@@ -19,27 +20,23 @@ class MakePaymentViewModel extends ChangeNotifier {
   Payment? _payment;
   Payment? get payment => _payment;
 
-  bool get isSubmitting =>
-      _status == MakePaymentStatus.submitting;
+  bool get isSubmitting => _status == MakePaymentStatus.submitting;
 
   Future<bool> pay({
-    required double amount,
-    String currency = 'DOP',
     required String cardNumber,
     required String cvv,
     required int expMonth,
     required int expYear,
-    required String cardholder,
+    String? cardholder,
   }) async {
     _status = MakePaymentStatus.submitting;
     _errorMessage = null;
+    _payment = null;
     notifyListeners();
 
     try {
       _payment = await _paymentRepository.createPayment(
         PaymentRequest(
-          amount: amount,
-          currency: currency,
           cardNumber: cardNumber,
           cvv: cvv,
           expMonth: expMonth,
@@ -52,8 +49,16 @@ class MakePaymentViewModel extends ChangeNotifier {
       notifyListeners();
 
       return true;
-    } catch (e) {
-      _errorMessage = e.toString();
+    } on ApiException catch (error) {
+      _payment = null;
+      _errorMessage = error.message;
+      _status = MakePaymentStatus.error;
+      notifyListeners();
+
+      return false;
+    } catch (_) {
+      _payment = null;
+      _errorMessage = 'No se pudo realizar el pago. Inténtalo nuevamente.';
       _status = MakePaymentStatus.error;
       notifyListeners();
 

@@ -7,7 +7,23 @@ import 'package:ocupa2/features/my_activity/data/models/contract_comment.dart';
 import 'package:ocupa2/features/my_activity/data/models/contract_photo.dart';
 import 'package:ocupa2/features/my_activity/presentation/viewmodels/contract_detail_view_model.dart';
 import 'package:ocupa2/features/my_activity/presentation/viewmodels/contracts_status.dart';
+import 'package:ocupa2/features/my_activity/presentation/viewmodels/contracts_view_model.dart';
 import 'package:provider/provider.dart';
+
+void _showContractMessage(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+}
+
+String _formatContractDate(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
+
+String _toApiDate(DateTime date) {
+  final String year = date.year.toString().padLeft(4, '0');
+  final String month = date.month.toString().padLeft(2, '0');
+  final String day = date.day.toString().padLeft(2, '0');
+  return '$year-$month-$day';
+}
 
 class ContractDetailView extends StatefulWidget {
   const ContractDetailView({super.key});
@@ -86,19 +102,19 @@ class _ContractDetailViewState extends State<ContractDetailView> {
             if (contract.startDate != null)
               _InfoRow(
                 label: 'Inicio',
-                value: _formatDate(contract.startDate!),
+                value: _formatContractDate(contract.startDate!),
               ),
             if ((contract.duration ?? '').isNotEmpty)
               _InfoRow(label: 'Duración', value: contract.duration ?? 'Sin información'),
             if (contract.acceptedAt != null)
               _InfoRow(
                 label: 'Aceptado el',
-                value: _formatDate(contract.acceptedAt!),
+                value: _formatContractDate(contract.acceptedAt!),
               ),
             if (contract.cancelledAt != null)
               _InfoRow(
                 label: 'Cancelado el',
-                value: _formatDate(contract.cancelledAt!),
+                value: _formatContractDate(contract.cancelledAt!),
               ),
             if ((contract.cancelJustification ?? '').isNotEmpty)
               _InfoRow(
@@ -125,7 +141,12 @@ class _ContractDetailViewState extends State<ContractDetailView> {
                 : () async {
                     final bool accepted = await viewModel.acceptContract();
                     if (!context.mounted) return;
-                    if (!accepted) {
+                    if (accepted) {
+                      _showContractMessage(
+                        context,
+                        'Contrato aceptado. El estado ahora es activo.',
+                      );
+                    } else {
                       _showMessage(
                         context,
                         viewModel.errorMessage ??
@@ -198,105 +219,24 @@ class _ContractDetailViewState extends State<ContractDetailView> {
     ContractDetailViewModel viewModel,
     Contract contract,
   ) async {
-    final num? salaryValue = contract.salary;
-    final DateTime? startDateValue = contract.startDate;
-
-    final TextEditingController salaryController = TextEditingController(
-      text: salaryValue != null ? salaryValue.toString() : '',
-    );
-    final TextEditingController currencyController = TextEditingController(
-      text: contract.currency ?? 'DOP',
-    );
-    final TextEditingController startDateController = TextEditingController(
-      text: startDateValue != null ? _formatDate(startDateValue) : '',
-    );
-    final TextEditingController durationController = TextEditingController(
-      text: contract.duration ?? '',
-    );
-
-    await showModalBottomSheet<void>(
+    final bool? saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       builder: (BuildContext bottomSheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom,
-            left: AppSpacing.md,
-            right: AppSpacing.md,
-            top: AppSpacing.md,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const Text(
-                'Fijar términos',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              TextField(
-                controller: salaryController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Salario'),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: currencyController,
-                decoration: const InputDecoration(labelText: 'Moneda'),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: startDateController,
-                decoration: const InputDecoration(labelText: 'Fecha de inicio'),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextField(
-                controller: durationController,
-                decoration: const InputDecoration(labelText: 'Duración'),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              ElevatedButton(
-                onPressed: viewModel.isSaving
-                    ? null
-                    : () async {
-                        final num? salary = num.tryParse(
-                          salaryController.text.trim(),
-                        );
-                        if (salary == null) {
-                          _showMessage(
-                            bottomSheetContext,
-                            'Ingresa un salario válido.',
-                          );
-                          return;
-                        }
-
-                        final bool saved = await viewModel.setTerms(
-                          salary: salary,
-                          currency: currencyController.text.trim().isNotEmpty
-                              ? currencyController.text.trim()
-                              : 'DOP',
-                          startDate: startDateController.text.trim(),
-                          duration: durationController.text.trim(),
-                        );
-
-                        if (!bottomSheetContext.mounted) return;
-                        if (saved) {
-                          Navigator.pop(bottomSheetContext);
-                        } else {
-                          _showMessage(
-                            bottomSheetContext,
-                            viewModel.errorMessage ??
-                                'No fue posible fijar los términos.',
-                          );
-                        }
-                      },
-                child: const Text('Guardar términos'),
-              ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-          ),
+        return _SetTermsSheet(
+          contract: contract,
+          viewModel: viewModel,
         );
       },
     );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    if (saved == true) {
+      _showContractMessage(context, 'Términos guardados correctamente.');
+    }
   }
 
   Future<void> _pickPhoto(
@@ -394,7 +334,13 @@ class _ContractDetailViewState extends State<ContractDetailView> {
       justificationController.text.trim(),
     );
     if (!context.mounted) return;
-    if (!cancelled) {
+    if (cancelled) {
+      final Contract? updated = viewModel.contract;
+      if (updated != null) {
+        context.read<ContractsViewModel>().updateContractInList(updated);
+      }
+      _showContractMessage(context, 'Contrato cancelado.');
+    } else {
       _showMessage(
         context,
         viewModel.errorMessage ?? 'No fue posible cancelar el contrato.',
@@ -403,13 +349,189 @@ class _ContractDetailViewState extends State<ContractDetailView> {
   }
 
   void _showMessage(BuildContext context, String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    _showContractMessage(context, message);
+  }
+}
+
+class _SetTermsSheet extends StatefulWidget {
+  const _SetTermsSheet({
+    required this.contract,
+    required this.viewModel,
+  });
+
+  final Contract contract;
+  final ContractDetailViewModel viewModel;
+
+  @override
+  State<_SetTermsSheet> createState() => _SetTermsSheetState();
+}
+
+class _SetTermsSheetState extends State<_SetTermsSheet> {
+  late final TextEditingController _salaryController;
+  late final TextEditingController _currencyController;
+  late final TextEditingController _durationController;
+  DateTime? _startDate;
+
+  @override
+  void initState() {
+    super.initState();
+    final num? salaryValue = widget.contract.salary;
+    _salaryController = TextEditingController(
+      text: salaryValue != null ? salaryValue.toString() : '',
+    );
+    _currencyController = TextEditingController(
+      text: widget.contract.currency ?? 'DOP',
+    );
+    _durationController = TextEditingController(
+      text: widget.contract.duration ?? '',
+    );
+    _startDate = widget.contract.startDate;
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  @override
+  void dispose() {
+    _salaryController.dispose();
+    _currencyController.dispose();
+    _durationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickStartDate() async {
+    final DateTime now = DateTime.now();
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 2),
+    );
+
+    if (picked != null && mounted) {
+      setState(() {
+        _startDate = picked;
+      });
+    }
+  }
+
+  Future<void> _save() async {
+    final num? salary = num.tryParse(_salaryController.text.trim());
+    if (salary == null) {
+      _showContractMessage(context, 'Ingresa un salario válido.');
+      return;
+    }
+
+    if (_startDate == null) {
+      _showContractMessage(context, 'Selecciona la fecha de inicio.');
+      return;
+    }
+
+    final String duration = _durationController.text.trim();
+    if (duration.isEmpty) {
+      _showContractMessage(context, 'Ingresa la duración del contrato.');
+      return;
+    }
+
+    final bool saved = await widget.viewModel.setTerms(
+      salary: salary,
+      currency: _currencyController.text.trim().isNotEmpty
+          ? _currencyController.text.trim()
+          : 'DOP',
+      startDate: _toApiDate(_startDate!),
+      duration: duration,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (saved) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+
+    _showContractMessage(
+      context,
+      widget.viewModel.errorMessage ?? 'No fue posible fijar los términos.',
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.viewModel,
+      builder: (BuildContext context, Widget? child) {
+        final bool isSaving = widget.viewModel.isSaving;
+
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: AppSpacing.md,
+            right: AppSpacing.md,
+            top: AppSpacing.md,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Text(
+                'Fijar términos',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                controller: _salaryController,
+                enabled: !isSaving,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Salario'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: _currencyController,
+                enabled: !isSaving,
+                decoration: const InputDecoration(labelText: 'Moneda'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              InkWell(
+                onTap: isSaving ? null : _pickStartDate,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Fecha de inicio',
+                    suffixIcon: Icon(Icons.calendar_today),
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                  ),
+                  child: Text(
+                    _startDate == null
+                        ? 'Selecciona una fecha'
+                        : _formatContractDate(_startDate!),
+                    style: TextStyle(
+                      color: _startDate == null
+                          ? Theme.of(context).hintColor
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextField(
+                controller: _durationController,
+                enabled: !isSaving,
+                decoration: const InputDecoration(
+                  labelText: 'Duración',
+                  hintText: 'Ej. 2 semanas',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: isSaving ? null : _save,
+                  child: Text(isSaving ? 'Guardando...' : 'Guardar términos'),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -484,9 +606,8 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (Color background, Color foreground, IconData icon) = switch (status
-        .toLowerCase()
-        .trim()) {
+    final (Color background, Color foreground, IconData icon) =
+        switch (Contract.normalizeStatus(status)) {
       'active' => (
         AppColors.successSurface,
         AppColors.success,

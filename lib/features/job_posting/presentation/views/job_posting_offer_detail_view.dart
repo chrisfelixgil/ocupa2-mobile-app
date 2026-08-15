@@ -317,6 +317,7 @@ class _OfferContent extends StatelessWidget {
               return _ApplicantCard(
                 applicant: applicant,
                 isUpdating: viewModel.isUpdatingApplicant,
+                hasWinner: viewModel.hasWinner,
                 onSelectFinalist: () => viewModel.updateApplicantStatus(
                   applicationId: applicant.id,
                   status: 'finalist',
@@ -325,13 +326,14 @@ class _OfferContent extends StatelessWidget {
                   applicationId: applicant.id,
                   status: 'winner',
                 ),
-                onDiscard: () => viewModel.updateApplicantStatus(
+                onRateWinner: (int rating) => viewModel.updateApplicantStatus(
+                  applicationId: applicant.id,
+                  status: 'winner',
+                  rating: rating,
+                ),
+                onDiscard: (int? rating) => viewModel.updateApplicantStatus(
                   applicationId: applicant.id,
                   status: 'discarded',
-                ),
-                onRate: (int rating) => viewModel.updateApplicantStatus(
-                  applicationId: applicant.id,
-                  status: applicant.status,
                   rating: rating,
                 ),
               );
@@ -497,18 +499,30 @@ class _ApplicantCard extends StatelessWidget {
   const _ApplicantCard({
     required this.applicant,
     required this.isUpdating,
+    required this.hasWinner,
     required this.onSelectFinalist,
     required this.onSelectWinner,
+    required this.onRateWinner,
     required this.onDiscard,
-    required this.onRate,
   });
 
   final Application applicant;
   final bool isUpdating;
+  final bool hasWinner;
   final VoidCallback onSelectFinalist;
-  final VoidCallback onSelectWinner;
-  final VoidCallback onDiscard;
-  final ValueChanged<int> onRate;
+  final Future<bool> Function() onSelectWinner;
+  final ValueChanged<int> onRateWinner;
+  final Future<bool> Function(int? rating) onDiscard;
+
+  String get _status => applicant.status.toLowerCase().trim();
+
+  bool get _isApplied => _status == 'applied';
+
+  bool get _isFinalist => _status == 'finalist';
+
+  bool get _isWinner => _status == 'winner';
+
+  bool get _isDiscarded => _status == 'discarded';
 
   Future<void> _openCertificateDialog(
     BuildContext context,
@@ -558,6 +572,102 @@ class _ApplicantCard extends StatelessWidget {
     );
   }
 
+  Future<int?> _askRating({
+    required BuildContext context,
+    required String title,
+    required String message,
+    required String confirmLabel,
+  }) {
+    return showDialog<int>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return _ApplicantRatingDialog(
+          title: title,
+          message: message,
+          confirmLabel: confirmLabel,
+        );
+      },
+    );
+  }
+
+  Future<void> _onWinnerPressed(BuildContext context) async {
+    final bool selected = await onSelectWinner();
+
+    if (!selected || !context.mounted) {
+      return;
+    }
+
+    await _askAndSaveRating(context);
+  }
+
+  Future<void> _askAndSaveRating(BuildContext context) async {
+    final int? rating = await _askRating(
+      context: context,
+      title: 'Calificar ganador',
+      message: 'Elige una calificación de 1 a 5 estrellas.',
+      confirmLabel: 'Guardar',
+    );
+
+    if (rating != null) {
+      onRateWinner(rating);
+    }
+  }
+
+  Future<void> _onDiscardPressed(BuildContext context) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Descartar candidato'),
+          content: Text(
+            '¿Estás seguro de que quieres descartar a '
+            '${applicant.applicantDisplayName}?',
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Descartar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    final int? rating = await _askRating(
+      context: context,
+      title: 'Calificar postulante',
+      message: 'Elige una calificación de 1 a 5 estrellas.',
+      confirmLabel: 'Guardar',
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    await onDiscard(rating);
+  }
+
+  Future<void> _askAndSaveDiscardRating(BuildContext context) async {
+    final int? rating = await _askRating(
+      context: context,
+      title: 'Calificar postulante',
+      message: 'Elige una calificación de 1 a 5 estrellas.',
+      confirmLabel: 'Guardar',
+    );
+
+    if (rating != null) {
+      await onDiscard(rating);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color statusColor = switch (applicant.status.toLowerCase()) {
@@ -581,11 +691,32 @@ class _ApplicantCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  applicant.applicantDisplayName,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      applicant.applicantDisplayName,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    if (applicant.rating != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: List.generate(5, (int index) {
+                          final bool isFilled = applicant.rating! > index;
+                          return Icon(
+                            isFilled
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
+                            color: Colors.amber,
+                            size: 16,
+                          );
+                        }),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               Container(
@@ -603,14 +734,6 @@ class _ApplicantCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            applicant.offerTitle ?? 'Postulación a oferta',
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontWeight: FontWeight.w500,
-            ),
           ),
           if ((applicant.comment ?? '').trim().isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -675,53 +798,109 @@ class _ApplicantCard extends StatelessWidget {
               );
             }),
           ],
-          const SizedBox(height: 12),
-          Text(
-            'Calificación',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-              fontWeight: FontWeight.w600,
+          if ((_isWinner || _isDiscarded) && applicant.rating == null) ...[
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: isUpdating
+                  ? null
+                  : () => _isDiscarded
+                      ? _askAndSaveDiscardRating(context)
+                      : _askAndSaveRating(context),
+              child: const Text('Calificar'),
             ),
-          ),
-          const SizedBox(height: 6),
+          ] else if (_isApplied || _isFinalist) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (_isApplied)
+                  OutlinedButton(
+                    onPressed: isUpdating ? null : onSelectFinalist,
+                    child: const Text('Finalista'),
+                  ),
+                if (!hasWinner)
+                  OutlinedButton(
+                    onPressed: isUpdating
+                        ? null
+                        : () => _onWinnerPressed(context),
+                    child: const Text('Ganador'),
+                  ),
+                TextButton(
+                  onPressed: isUpdating
+                      ? null
+                      : () => _onDiscardPressed(context),
+                  child: const Text('Descartar'),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ApplicantRatingDialog extends StatefulWidget {
+  const _ApplicantRatingDialog({
+    required this.title,
+    required this.message,
+    required this.confirmLabel,
+  });
+
+  final String title;
+  final String message;
+  final String confirmLabel;
+
+  @override
+  State<_ApplicantRatingDialog> createState() => _ApplicantRatingDialogState();
+}
+
+class _ApplicantRatingDialogState extends State<_ApplicantRatingDialog> {
+  int _rating = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(widget.message),
+          const SizedBox(height: 12),
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(5, (int index) {
               final int starValue = index + 1;
-              final bool isFilled = (applicant.rating ?? 0) >= starValue;
+              final bool isFilled = _rating >= starValue;
               return IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-                onPressed: isUpdating ? null : () => onRate(starValue),
+                onPressed: () {
+                  setState(() {
+                    _rating = starValue;
+                  });
+                },
                 icon: Icon(
                   isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
                   color: Colors.amber,
-                  size: 20,
                 ),
               );
             }),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton(
-                onPressed: isUpdating ? null : onSelectFinalist,
-                child: const Text('Finalista'),
-              ),
-              OutlinedButton(
-                onPressed: isUpdating ? null : onSelectWinner,
-                child: const Text('Ganador'),
-              ),
-              TextButton(
-                onPressed: isUpdating ? null : onDiscard,
-                child: const Text('Descartar'),
-              ),
-            ],
-          ),
         ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _rating == 0
+              ? null
+              : () => Navigator.of(context).pop(_rating),
+          child: Text(widget.confirmLabel),
+        ),
+      ],
     );
   }
 }

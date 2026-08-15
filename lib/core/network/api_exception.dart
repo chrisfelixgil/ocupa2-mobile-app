@@ -5,6 +5,7 @@
   notFound,
   conflict,
   validation,
+  paymentRequired,
   server,
   connection,
   timeout,
