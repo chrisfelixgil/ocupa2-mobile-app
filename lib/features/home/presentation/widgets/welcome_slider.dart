@@ -1,11 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ocupa2/app/theme/app_colors.dart';
 
 class WelcomeSlider extends StatefulWidget {
-  const WelcomeSlider({
-    super.key,
-  });
+  const WelcomeSlider({super.key});
 
   @override
   State<WelcomeSlider> createState() {
@@ -20,23 +19,20 @@ class _WelcomeSliderState extends State<WelcomeSlider> {
 
   Timer? _timer;
 
-  final List<String> _images = const [
-    'assets/images/home/welcome_1.jpg',
-    'assets/images/home/welcome_2.jpg',
-    'assets/images/home/welcome_3.jpg',
-    'assets/images/home/welcome_4.jpg',
+  final List<String> _images = const <String>[
+    'assets/images/home/banner_1.png',
+    'assets/images/home/banner_2.png',
+    'assets/images/home/banner_3.png',
+    'assets/images/home/banner_4.png',
   ];
 
   @override
   void initState() {
     super.initState();
 
-    _timer = Timer.periodic(
-      const Duration(seconds: 4),
-      (_) {
-        _nextPage();
-      },
-    );
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      _nextPage();
+    });
   }
 
   void _nextPage() {
@@ -53,21 +49,6 @@ class _WelcomeSliderState extends State<WelcomeSlider> {
     );
   }
 
-  void _previousPage() {
-    if (!_pageController.hasClients) {
-      return;
-    }
-
-    final int previousPage =
-        (_currentPage - 1 + _images.length) % _images.length;
-
-    _pageController.animateToPage(
-      previousPage,
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-    );
-  }
-
   @override
   void dispose() {
     _timer?.cancel();
@@ -77,106 +58,86 @@ class _WelcomeSliderState extends State<WelcomeSlider> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 220,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          height: 150,
+          width: double.infinity,
           child: Stack(
-            alignment: Alignment.center,
-            children: [
+            fit: StackFit.expand,
+            children: <Widget>[
               PageView.builder(
                 controller: _pageController,
                 itemCount: _images.length,
-                onPageChanged: (index) {
+                onPageChanged: (int index) {
                   setState(() {
                     _currentPage = index;
                   });
                 },
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.asset(
-                        _images[index],
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (
-                          context,
-                          error,
-                          stackTrace,
+                itemBuilder: (BuildContext context, int index) {
+                  return Image.asset(
+                    _images[index],
+                    fit: BoxFit.cover,
+                    errorBuilder:
+                        (
+                          BuildContext context,
+                          Object error,
+                          StackTrace? stackTrace,
                         ) {
-                          return Container(
-                            color: Colors.grey.shade200,
-                            alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.image_not_supported_outlined,
-                              size: 50,
-                            ),
-                          );
+                          return const ColoredBox(color: AppColors.border);
                         },
-                      ),
-                    ),
                   );
                 },
               ),
+              const ColoredBox(color: Color(0xBF0F172A)),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    const Text(
+                      'Trabajos en tu zona',
+                      style: TextStyle(
+                        color: AppColors.surface,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Explora trabajos disponibles en tu comunidad',
+                      style: TextStyle(color: AppColors.border, fontSize: 12),
+                    ),
+                    const Spacer(),
+                    Row(
+                      children: List<Widget>.generate(_images.length, (
+                        int index,
+                      ) {
+                        final bool selected = _currentPage == index;
 
-              // Flecha izquierda
-              Positioned(
-                left: 24,
-                child: IconButton.filled(
-                  onPressed: _previousPage,
-                  icon: const Icon(
-                    Icons.chevron_left_rounded,
-                  ),
-                ),
-              ),
-
-              // Flecha derecha
-              Positioned(
-                right: 24,
-                child: IconButton.filled(
-                  onPressed: _nextPage,
-                  icon: const Icon(
-                    Icons.chevron_right_rounded,
-                  ),
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          margin: const EdgeInsets.only(right: 4),
+                          width: selected ? 14 : 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppColors.surface
+                                : AppColors.surface.withValues(alpha: 0.4),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-
-        const SizedBox(height: 12),
-
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            _images.length,
-            (index) {
-              final bool selected = _currentPage == index;
-
-              return AnimatedContainer(
-                duration: const Duration(
-                  milliseconds: 250,
-                ),
-                margin: const EdgeInsets.symmetric(
-                  horizontal: 4,
-                ),
-                width: selected ? 24 : 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: selected
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

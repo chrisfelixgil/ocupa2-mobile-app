@@ -1,13 +1,20 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ocupa2/app/router/app_routes.dart';
+import 'package:ocupa2/app/theme/app_colors.dart';
+import 'package:ocupa2/app/theme/app_typography.dart';
+import 'package:ocupa2/features/auth/data/models/user.dart';
 import 'package:ocupa2/features/auth/presentation/viewmodels/session_view_model.dart';
+import 'package:ocupa2/features/home/data/models/educational_video.dart';
+import 'package:ocupa2/features/home/data/models/news.dart';
+import 'package:ocupa2/features/job_search/data/models/offer.dart';
+import 'package:ocupa2/features/job_search/presentation/viewmodels/explore_offers_view_model.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../viewmodels/home_status.dart';
 import '../viewmodels/home_view_model.dart';
-import '../widgets/news_section.dart';
-import '../widgets/videos_section.dart';
 import '../widgets/welcome_slider.dart';
 
 class HomeView extends StatefulWidget {
@@ -28,7 +35,18 @@ class _HomeViewState extends State<HomeView> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
       context.read<HomeViewModel>().loadHome();
+
+      final ExploreOffersViewModel offersViewModel = context
+          .read<ExploreOffersViewModel>();
+
+      if (offersViewModel.offers.isEmpty && !offersViewModel.isLoading) {
+        offersViewModel.load();
+      }
     });
   }
 
@@ -78,227 +96,368 @@ class _HomeViewState extends State<HomeView> {
     }
   }
 
+  void _onMenuSelected(String value) {
+    switch (value) {
+      case 'offers':
+        context.pushNamed(AppRouteNames.jobSearchExplore);
+        break;
+      case 'myOffers':
+        context.pushNamed(AppRouteNames.jobPostingMyOffers);
+        break;
+      case 'experiences':
+        context.pushNamed(AppRouteNames.myExperiences);
+        break;
+      case 'applications':
+        context.pushNamed(AppRouteNames.activityHub);
+        break;
+      case 'contracts':
+        context.pushNamed(AppRouteNames.myContracts);
+        break;
+      case 'myPayments':
+        context.pushNamed(AppRouteNames.paymentsMyPayments);
+        break;
+      case 'changePassword':
+        context.pushNamed(AppRouteNames.changePassword);
+        break;
+      case 'about':
+        context.pushNamed(AppRouteNames.about);
+        break;
+      case 'logout':
+        _requestLogout();
+        break;
+    }
+  }
+
+  Future<void> _refresh(HomeViewModel viewModel) async {
+    await viewModel.refresh();
+    await context.read<ExploreOffersViewModel>().load();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final User? user = context.watch<SessionViewModel>().user;
+    final String firstName = (user?.firstName ?? '').trim();
+    final String greeting = firstName.isEmpty ? 'Hola 👋' : 'Hola, $firstName 👋';
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ocupa2'),
-        centerTitle: true,
-        actions: [
-          PopupMenuButton<String>(
-            tooltip: 'Menú',
-            icon: const Icon(Icons.menu_rounded),
-            onSelected: (String value) {
-              switch (value) {
-                case 'offers':
-                  context.pushNamed(AppRouteNames.jobSearchExplore);
-                  break;
+      backgroundColor: AppColors.surface,
+      body: SafeArea(
+        child: Consumer<HomeViewModel>(
+          builder: (BuildContext context, HomeViewModel viewModel, Widget? child) {
+            final ExploreOffersViewModel offersViewModel = context
+                .watch<ExploreOffersViewModel>();
+            final List<Offer> recentOffers = offersViewModel.offers
+                .take(5)
+                .toList();
 
-                case 'myOffers':
-                  context.pushNamed(AppRouteNames.jobPostingMyOffers);
-                  break;
-
-                case 'experiences':
-                  context.pushNamed(AppRouteNames.myExperiences);
-                  break;
-
-                case 'applications':
-                  context.pushNamed(AppRouteNames.myApplications);
-                  break;
-
-                case 'contracts':
-                  context.pushNamed(AppRouteNames.myContracts);
-                  break;
-
-                case 'myPayments':
-                  context.pushNamed(AppRouteNames.paymentsMyPayments);
-                  break;
-
-                case 'changePassword':
-                  context.pushNamed(AppRouteNames.changePassword);
-                  break;
-
-                case 'about':
-                  context.pushNamed(AppRouteNames.about);
-                  break;
-
-                case 'logout':
-                  _requestLogout();
-                  break;
-              }
-            },
-            itemBuilder: (BuildContext context) => const [
-              PopupMenuItem<String>(
-                value: 'offers',
-                child: ListTile(
-                  leading: Icon(Icons.travel_explore_rounded),
-                  title: Text('Explorar ofertas'),
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'myOffers',
-                child: ListTile(
-                  leading: Icon(Icons.campaign_outlined),
-                  title: Text('Mis ofertas'),
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'experiences',
-                child: ListTile(
-                  leading: Icon(Icons.work_history_outlined),
-                  title: Text('Mis experiencias'),
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'applications',
-                child: ListTile(
-                  leading: Icon(Icons.assignment_outlined),
-                  title: Text('Mis aplicaciones'),
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'contracts',
-                child: ListTile(
-                  leading: Icon(Icons.description_rounded),
-                  title: Text('Mis contratos'),
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'myPayments',
-                child: ListTile(
-                  leading: Icon(Icons.payments_outlined),
-                  title: Text('Mis pagos'),
-                ),
-              ),
-              PopupMenuDivider(),
-              PopupMenuItem<String>(
-                value: 'changePassword',
-                child: ListTile(
-                  leading: Icon(Icons.password_rounded),
-                  title: Text('Cambiar contraseña'),
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'about',
-                child: ListTile(
-                  leading: Icon(Icons.info_outline_rounded),
-                  title: Text('Acerca de'),
-                ),
-              ),
-              PopupMenuDivider(),
-              PopupMenuItem<String>(
-                value: 'logout',
-                child: ListTile(
-                  leading: Icon(Icons.logout_rounded),
-                  title: Text('Cerrar sesión'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Consumer<HomeViewModel>(
-        builder: (context, viewModel, child) {
-          return RefreshIndicator(
-            onRefresh: viewModel.refresh,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(top: 16, bottom: 40),
-              children: [
-                const WelcomeSlider(),
-
-                const SizedBox(height: 32),
-
-                _SectionTitle(
-                  icon: Icons.newspaper_outlined,
-                  title: 'Noticias de empleo',
-                ),
-
-                const SizedBox(height: 12),
-
-                if (viewModel.status == HomeStatus.loading)
-                  const Padding(
-                    padding: EdgeInsets.all(40),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (viewModel.status == HomeStatus.error)
-                  _ErrorMessage(
-                    message: viewModel.errorMessage ?? 'Ocurrió un error.',
-                    onRetry: viewModel.loadHome,
-                  )
-                else ...[
-                  NewsSection(
-                    news: _showAllNews
-                        ? viewModel.news
-                        : viewModel.news.take(5).toList(),
+            return RefreshIndicator(
+              onRefresh: () {
+                return _refresh(viewModel);
+              },
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(top: 12, bottom: 20),
+                children: <Widget>[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        const Text(
+                          'Ocupa2',
+                          style: TextStyle(
+                            color: AppColors.text,
+                            fontSize: 14,
+                            fontWeight: AppTypography.medium,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          greeting,
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 22,
+                            fontWeight: AppTypography.bold,
+                          ),
+                        ),
+                        const Text(
+                          '¿Qué necesitas hoy?',
+                          style: TextStyle(
+                            color: AppColors.text,
+                            fontSize: 13,
+                            fontWeight: AppTypography.regular,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-
-                  if (viewModel.news.length > 5)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: _ActionCard(
+                            icon: Icons.search,
+                            title: 'Buscar trabajo',
+                            subtitle: 'Encuentra ofertas cerca',
+                            onTap: () {
+                              context.pushNamed(AppRouteNames.jobSearchExplore);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _ActionCard(
+                            icon: Icons.add,
+                            title: 'Publicar trabajo',
+                            subtitle: 'Encuentra a la persona indicada',
+                            onTap: () {
+                              context.pushNamed(AppRouteNames.jobPostingCreate);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const WelcomeSlider(),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: <Widget>[
+                        const Expanded(
+                          child: Text(
+                            'Oportunidades recientes',
+                            style: TextStyle(
+                              color: AppColors.text,
+                              fontSize: 16,
+                              fontWeight: AppTypography.medium,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            context.pushNamed(AppRouteNames.jobSearchExplore);
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.link,
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            textStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: AppTypography.medium,
+                            ),
+                          ),
+                          child: const Text('Ver todas'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (recentOffers.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        'Aún no hay ofertas para mostrar.',
+                        style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 13,
+                        ),
                       ),
-                      child: Align(
+                    )
+                  else
+                    _RecentOffersSlider(offers: recentOffers),
+                  const SizedBox(height: 20),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      'Noticias y consejos',
+                      style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 16,
+                        fontWeight: AppTypography.medium,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (viewModel.status == HomeStatus.loading)
+                    const Padding(
+                      padding: EdgeInsets.all(40),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (viewModel.status == HomeStatus.error)
+                    _ErrorMessage(
+                      message: viewModel.errorMessage ?? 'Ocurrió un error.',
+                      onRetry: viewModel.loadHome,
+                    )
+                  else ...<Widget>[
+                    ...(_showAllNews ? viewModel.news : viewModel.news.take(2))
+                        .map((News item) {
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                            child: _NewsRow(news: item),
+                          );
+                        }),
+                    if (viewModel.news.length > 2)
+                      Align(
                         alignment: Alignment.centerRight,
-                        child: TextButton.icon(
+                        child: TextButton(
                           onPressed: () {
                             setState(() {
                               _showAllNews = !_showAllNews;
                             });
                           },
-                          icon: Icon(
-                            _showAllNews
-                                ? Icons.keyboard_arrow_up_rounded
-                                : Icons.keyboard_arrow_down_rounded,
-                          ),
-                          label: Text(_showAllNews ? 'Ver menos' : 'Ver más'),
+                          child: Text(_showAllNews ? 'Ver menos' : 'Ver más'),
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        'Videos educativos',
+                        style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 16,
+                          fontWeight: AppTypography.medium,
                         ),
                       ),
                     ),
-
-                  const SizedBox(height: 28),
-
-                  _SectionTitle(
-                    icon: Icons.play_circle_outline,
-                    title: 'Videos educativos',
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  VideosSection(
-                    videos: _showAllVideos
-                        ? viewModel.videos
-                        : viewModel.videos.take(5).toList(),
-                  ),
-
-                  if (viewModel.videos.length > 5)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: Align(
+                    const SizedBox(height: 12),
+                    ...(_showAllVideos
+                            ? viewModel.videos
+                            : viewModel.videos.take(2))
+                        .map((EducationalVideo video) {
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                            child: _VideoRow(video: video),
+                          );
+                        }),
+                    if (viewModel.videos.length > 2)
+                      Align(
                         alignment: Alignment.centerRight,
-                        child: TextButton.icon(
+                        child: TextButton(
                           onPressed: () {
                             setState(() {
                               _showAllVideos = !_showAllVideos;
                             });
                           },
-                          icon: Icon(
-                            _showAllVideos
-                                ? Icons.keyboard_arrow_up_rounded
-                                : Icons.keyboard_arrow_down_rounded,
+                          child: Text(
+                            _showAllVideos ? 'Ver menos' : 'Ver más',
                           ),
-                          label: Text(_showAllVideos ? 'Ver menos' : 'Ver más'),
                         ),
                       ),
-                    ),
+                  ],
                 ],
+              ),
+            );
+          },
+        ),
+      ),
+      bottomNavigationBar: const _HomeBottomNav(),
+    );
+  }
+}
+
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          height: 140,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 20, color: AppColors.primary),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 16,
+                    fontWeight: AppTypography.medium,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 12,
+                    fontWeight: AppTypography.regular,
+                  ),
+                ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RecentOffersSlider extends StatelessWidget {
+  const _RecentOffersSlider({required this.offers});
+
+  static const double _cardSize = 200;
+
+  final List<Offer> offers;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: _cardSize,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        itemCount: offers.length,
+        separatorBuilder: (_, _) {
+          return const SizedBox(width: 12);
+        },
+        itemBuilder: (BuildContext context, int index) {
+          final Offer offer = offers[index];
+
+          return _RecentOfferCard(
+            offer: offer,
+            accent: index.isOdd ? AppColors.success : AppColors.primary,
+            onTap: () {
+              context.pushNamed(
+                AppRouteNames.jobSearchOfferDetail,
+                pathParameters: <String, String>{'id': offer.id},
+              );
+            },
           );
         },
       ),
@@ -306,46 +465,489 @@ class _HomeViewState extends State<HomeView> {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  final IconData icon;
-  final String title;
+class _RecentOfferCard extends StatelessWidget {
+  const _RecentOfferCard({
+    required this.offer,
+    required this.accent,
+    required this.onTap,
+  });
 
-  const _SectionTitle({required this.icon, required this.title});
+  final Offer offer;
+  final Color accent;
+  final VoidCallback onTap;
+
+  String get _payLabel {
+    if (offer.paymentAmount == null) {
+      return 'A convenir';
+    }
+
+    final String amount = offer.paymentAmount!.round().toString();
+    final String currency = (offer.paymentCurrency ?? 'DOP').toUpperCase();
+
+    if (currency == 'DOP' || currency == 'RD' || currency == 'RD\$') {
+      return 'RD\$$amount';
+    }
+
+    return '$currency $amount';
+  }
+
+  String get _contractLabel {
+    switch (offer.contractType.toLowerCase()) {
+      case 'temporal':
+        return 'Temporal';
+      case 'horas':
+        return 'Por horas';
+      default:
+        return offer.contractType;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Icon(icon, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+    return Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: SizedBox(
+          width: 200,
+          height: 200,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          offer.displayJobType,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 11,
+                            fontWeight: AppTypography.medium,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _payLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 14,
+                        fontWeight: AppTypography.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  offer.description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 14,
+                    fontWeight: AppTypography.medium,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: <Widget>[
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 14,
+                      color: AppColors.text,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        offer.address,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Divider(height: 1, color: AppColors.border),
+                const SizedBox(height: 8),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        _contractLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Ver oferta',
+                      style: TextStyle(
+                        color: AppColors.link,
+                        fontSize: 11,
+                        fontWeight: AppTypography.medium,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NewsRow extends StatelessWidget {
+  const _NewsRow({required this.news});
+
+  final News news;
+
+  String get _meta {
+    final String source = news.source.isEmpty ? 'Ocupa2' : news.source;
+    final DateTime? date = news.date;
+
+    if (date == null) {
+      return source;
+    }
+
+    const List<String> months = <String>[
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
+    ];
+
+    return '${date.day} ${months[date.month - 1]} · $source';
+  }
+
+  Future<void> _open() async {
+    if (news.url.isEmpty) {
+      return;
+    }
+
+    final Uri? uri = Uri.tryParse(news.url);
+
+    if (uri == null) {
+      return;
+    }
+
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        onTap: _open,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 60,
+                  height: 60,
+                  child: news.image.isEmpty
+                      ? const ColoredBox(
+                          color: AppColors.border,
+                          child: Icon(Icons.article_outlined),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: news.image,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, _, _) {
+                            return const ColoredBox(
+                              color: AppColors.border,
+                              child: Icon(Icons.broken_image_outlined),
+                            );
+                          },
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      news.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 13,
+                        fontWeight: AppTypography.medium,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _meta,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VideoRow extends StatelessWidget {
+  const _VideoRow({required this.video});
+
+  final EducationalVideo video;
+
+  Future<void> _open() async {
+    if (video.url.isEmpty) {
+      return;
+    }
+
+    final Uri? uri = Uri.tryParse(video.url);
+
+    if (uri == null) {
+      return;
+    }
+
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        onTap: _open,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 60,
+                  height: 60,
+                  child: video.thumbnail.isEmpty
+                      ? const ColoredBox(
+                          color: AppColors.border,
+                          child: Icon(Icons.play_circle_outline),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: video.thumbnail,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, _, _) {
+                            return const ColoredBox(
+                              color: AppColors.border,
+                              child: Icon(Icons.videocam_off_outlined),
+                            );
+                          },
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  video.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 13,
+                    fontWeight: AppTypography.medium,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeBottomNav extends StatelessWidget {
+  const _HomeBottomNav();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: <Widget>[
+              const _NavItem(
+                icon: Icons.home_outlined,
+                label: 'Inicio',
+                selected: true,
+              ),
+              _NavItem(
+                icon: Icons.search,
+                label: 'Explorar',
+                onTap: () {
+                  context.pushNamed(AppRouteNames.jobSearchExplore);
+                },
+              ),
+              _NavItem(
+                icon: Icons.add,
+                label: 'Publicar',
+                prominent: true,
+                onTap: () {
+                  context.pushNamed(AppRouteNames.jobPostingCreate);
+                },
+              ),
+              _NavItem(
+                icon: Icons.history,
+                label: 'Actividad',
+                onTap: () {
+                  context.pushNamed(AppRouteNames.activityHub);
+                },
+              ),
+              _NavItem(
+                icon: Icons.person_outline,
+                label: 'Perfil',
+                onTap: () {
+                  context.pushNamed(AppRouteNames.profile);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    this.selected = false,
+    this.prominent = false,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final bool prominent;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = selected ? AppColors.primary : AppColors.text;
+
+    return InkWell(
+      onTap: onTap,
+      child: SizedBox(
+        width: 64,
+        height: 64,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            if (prominent)
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 24, color: AppColors.primary),
+              )
+            else
+              Icon(icon, size: 22, color: color),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: selected
+                    ? AppTypography.medium
+                    : AppTypography.regular,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _ErrorMessage extends StatelessWidget {
+  const _ErrorMessage({required this.message, required this.onRetry});
+
   final String message;
   final Future<void> Function() onRetry;
-
-  const _ErrorMessage({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
-        children: [
+        children: <Widget>[
           const Icon(Icons.error_outline, size: 45),
           const SizedBox(height: 12),
           Text(message, textAlign: TextAlign.center),

@@ -10,6 +10,8 @@ class PasswordField extends StatefulWidget {
     required this.autofillHints,
     this.textInputAction = TextInputAction.next,
     this.onSubmitted,
+    this.hintText,
+    this.showFloatingLabel = true,
     super.key,
   });
 
@@ -20,6 +22,8 @@ class PasswordField extends StatefulWidget {
   final Iterable<String> autofillHints;
   final TextInputAction textInputAction;
   final ValueChanged<String?>? onSubmitted;
+  final String? hintText;
+  final bool showFloatingLabel;
 
   @override
   State<PasswordField> createState() {
@@ -44,7 +48,8 @@ class _PasswordFieldState extends State<PasswordField> {
       validator: widget.validator,
       autovalidateMode: AutovalidateMode.onUserInteraction,
       decoration: InputDecoration(
-        labelText: widget.label,
+        labelText: widget.showFloatingLabel ? widget.label : null,
+        hintText: widget.hintText,
         prefixIcon: const Icon(Icons.lock_outline_rounded),
         suffixIcon: IconButton(
           onPressed: widget.enabled

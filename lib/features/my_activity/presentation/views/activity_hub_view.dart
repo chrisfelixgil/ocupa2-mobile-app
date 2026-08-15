@@ -3,80 +3,53 @@ import 'package:go_router/go_router.dart';
 import 'package:ocupa2/app/router/app_routes.dart';
 import 'package:ocupa2/app/theme/app_colors.dart';
 import 'package:ocupa2/app/theme/app_typography.dart';
-import 'package:provider/provider.dart';
+import 'package:ocupa2/features/my_activity/presentation/views/my_applications_view.dart';
+import 'package:ocupa2/features/my_activity/presentation/views/my_contracts_view.dart';
+import 'package:ocupa2/features/my_activity/presentation/views/my_offers_view.dart';
 
-import '../viewmodels/my_payments_status.dart';
-import '../viewmodels/my_payments_view_model.dart';
-import '../widgets/payment_card.dart';
-import '../../data/models/payment.dart';
-import 'payment_detail_view.dart';
+const Color _muted = Color(0xFF64748B);
 
-class MyPaymentsView extends StatefulWidget {
-  const MyPaymentsView({super.key});
+class ActivityHubView extends StatefulWidget {
+  const ActivityHubView({super.key});
 
   @override
-  State<MyPaymentsView> createState() => _MyPaymentsViewState();
+  State<ActivityHubView> createState() => _ActivityHubViewState();
 }
 
-class _MyPaymentsViewState extends State<MyPaymentsView> {
+class _ActivityHubViewState extends State<ActivityHubView>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MyPaymentsViewModel>().loadMyPayments();
-    });
+    _tabController = TabController(length: 3, vsync: this);
   }
 
-  void _openDetail(BuildContext context, Payment payment) {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => PaymentDetailView(payment: payment),
-      ),
-    );
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final MyPaymentsViewModel viewModel = context.watch<MyPaymentsViewModel>();
-
     return Scaffold(
       backgroundColor: AppColors.surface,
-      bottomNavigationBar: const _PaymentsBottomNav(),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Row(
                 children: <Widget>[
-                  Material(
-                    color: AppColors.surface,
-                    shape: const CircleBorder(
-                      side: BorderSide(color: AppColors.border),
-                    ),
-                    child: InkWell(
-                      onTap: () => Navigator.of(context).pop(),
-                      customBorder: const CircleBorder(),
-                      child: const SizedBox(
-                        width: 36,
-                        height: 36,
-                        child: Icon(
-                          Icons.chevron_left,
-                          size: 16,
-                          color: AppColors.text,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
-                      'Mis pagos',
+                      'Actividad',
                       style: TextStyle(
                         color: AppColors.text,
-                        fontSize: 18,
+                        fontSize: 24,
                         fontWeight: AppTypography.bold,
                       ),
                     ),
@@ -102,78 +75,50 @@ class _MyPaymentsViewState extends State<MyPaymentsView> {
                 ],
               ),
             ),
+            TabBar(
+              controller: _tabController,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: _muted,
+              labelStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: AppTypography.medium,
+              ),
+              indicator: const UnderlineTabIndicator(
+                borderSide: BorderSide(width: 3, color: AppColors.primary),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(3)),
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: AppColors.border,
+              tabs: const <Widget>[
+                Tab(text: 'Aplicaciones'),
+                Tab(text: 'Mis ofertas'),
+                Tab(text: 'Contratos'),
+              ],
+            ),
             Expanded(
-              child: RefreshIndicator(
-                onRefresh: () =>
-                    context.read<MyPaymentsViewModel>().loadMyPayments(),
-                child: _buildBody(context, viewModel),
+              child: TabBarView(
+                controller: _tabController,
+                children: const <Widget>[
+                  MyApplicationsView(embedded: true),
+                  MyOffersView(embedded: true),
+                  MyContractsView(embedded: true),
+                ],
               ),
             ),
           ],
         ),
       ),
+      bottomNavigationBar: const _ActivityBottomNav(),
     );
-  }
-
-  Widget _buildBody(BuildContext context, MyPaymentsViewModel viewModel) {
-    switch (viewModel.status) {
-      case MyPaymentsStatus.idle:
-      case MyPaymentsStatus.loading:
-        return const Center(child: CircularProgressIndicator());
-      case MyPaymentsStatus.error:
-        return ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: <Widget>[
-            const SizedBox(height: 40),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  viewModel.errorMessage ?? 'Error al cargar pagos',
-                  style: const TextStyle(color: AppColors.error),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ],
-        );
-      case MyPaymentsStatus.loaded:
-        if (viewModel.payments.isEmpty) {
-          return ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: const <Widget>[
-              SizedBox(height: 40),
-              Center(
-                child: Text(
-                  'Aún no tienes pagos',
-                  style: TextStyle(
-                    color: AppColors.text,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          );
-        }
-        return ListView.separated(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          itemCount: viewModel.payments.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 12),
-          itemBuilder: (BuildContext context, int index) {
-            final payment = viewModel.payments[index];
-            return PaymentCard(
-              payment: payment,
-              onTap: () => _openDetail(context, payment),
-            );
-          },
-        );
-    }
   }
 }
 
-class _PaymentsBottomNav extends StatelessWidget {
-  const _PaymentsBottomNav();
+class _ActivityBottomNav extends StatelessWidget {
+  const _ActivityBottomNav();
 
   @override
   Widget build(BuildContext context) {
@@ -205,16 +150,15 @@ class _PaymentsBottomNav extends StatelessWidget {
                 prominent: true,
                 onTap: () => context.pushNamed(AppRouteNames.jobPostingCreate),
               ),
-              _NavItem(
+              const _NavItem(
                 icon: Icons.history,
                 label: 'Actividad',
-                onTap: () => context.pushNamed(AppRouteNames.activityHub),
+                selected: true,
               ),
               _NavItem(
                 icon: Icons.person_outline,
                 label: 'Perfil',
-                selected: true,
-                onTap: () => context.goNamed(AppRouteNames.profile),
+                onTap: () => context.pushNamed(AppRouteNames.profile),
               ),
             ],
           ),
@@ -241,7 +185,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = selected ? AppColors.primary : AppColors.text;
+    final Color color = selected ? AppColors.primary : _muted;
 
     return InkWell(
       onTap: onTap,

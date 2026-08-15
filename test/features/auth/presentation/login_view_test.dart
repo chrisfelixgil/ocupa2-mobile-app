@@ -102,7 +102,7 @@ void main() {
     testWidgets('muestra sus campos y botón', (WidgetTester tester) async {
       await buildLogin(tester);
 
-      expect(find.text('Inicia sesión en Ocupa2'), findsOneWidget);
+      expect(find.text('Bienvenido de nuevo'), findsOneWidget);
       expect(find.byKey(const Key('login_email_field')), findsOneWidget);
       expect(find.byKey(const Key('login_password_field')), findsOneWidget);
       expect(find.byKey(const Key('login_submit_button')), findsOneWidget);

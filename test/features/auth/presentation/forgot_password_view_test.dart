@@ -93,7 +93,7 @@ void main() {
     ) async {
       await buildView(tester);
 
-      expect(find.text('Recupera tu contraseña'), findsOneWidget);
+      expect(find.text('Recuperar contraseña'), findsOneWidget);
       expect(find.byKey(const Key('forgot_email_field')), findsOneWidget);
       expect(
         find.byKey(const Key('forgot_referral_matricula_field')),
@@ -121,7 +121,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(repository.forgotPasswordCalls, 1);
-        expect(find.text('Inicia sesión en Ocupa2'), findsOneWidget);
+        expect(find.text('Bienvenido de nuevo'), findsOneWidget);
         expect(
           find.text('Revisa tu correo e inicia sesión con la clave temporal.'),
           findsOneWidget,

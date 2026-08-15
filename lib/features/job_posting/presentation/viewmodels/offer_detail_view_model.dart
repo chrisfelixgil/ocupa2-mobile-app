@@ -93,9 +93,59 @@ class JobPostingOfferDetailViewModel extends ChangeNotifier {
               updated.applicantFirstName ?? item.applicantFirstName,
           applicantLastName:
               updated.applicantLastName ?? item.applicantLastName,
+          applicantEmail: updated.applicantEmail ?? item.applicantEmail,
+          applicantAddress: updated.applicantAddress ?? item.applicantAddress,
           applicantExperiences: updated.applicantExperiences.isNotEmpty
               ? updated.applicantExperiences
               : item.applicantExperiences,
+          answers: updated.answers.isNotEmpty ? updated.answers : item.answers,
+        );
+      }).toList();
+
+      _isUpdatingApplicant = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isUpdatingApplicant = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> rateApplicant({
+    required String applicationId,
+    required int rating,
+  }) async {
+    _isUpdatingApplicant = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final Application updated =
+          await _applicationRepository.updateApplication(
+        id: applicationId,
+        rating: rating,
+      );
+
+      _applicants = _applicants.map((Application item) {
+        if (item.id != updated.id) {
+          return item;
+        }
+
+        return item.copyWith(
+          comment: updated.comment ?? item.comment,
+          rating: updated.rating ?? rating,
+          applicantFirstName:
+              updated.applicantFirstName ?? item.applicantFirstName,
+          applicantLastName:
+              updated.applicantLastName ?? item.applicantLastName,
+          applicantEmail: updated.applicantEmail ?? item.applicantEmail,
+          applicantAddress: updated.applicantAddress ?? item.applicantAddress,
+          applicantExperiences: updated.applicantExperiences.isNotEmpty
+              ? updated.applicantExperiences
+              : item.applicantExperiences,
+          answers: updated.answers.isNotEmpty ? updated.answers : item.answers,
         );
       }).toList();
 

@@ -13,10 +13,30 @@ class MyOffersViewModel extends ChangeNotifier {
   List<PublishedOffer> _offers = const <PublishedOffer>[];
   String? _errorMessage;
   final Set<String> _deactivatingIds = <String>{};
+  String _statusFilter = 'all';
 
   MyOffersStatus get status => _status;
   List<PublishedOffer> get offers => _offers;
   String? get errorMessage => _errorMessage;
+  String get statusFilter => _statusFilter;
+
+  List<PublishedOffer> get visibleOffers {
+    return switch (_statusFilter) {
+      'active' =>
+        _offers.where((PublishedOffer offer) => offer.isActive).toList(),
+      'finished' =>
+        _offers.where((PublishedOffer offer) => !offer.isActive).toList(),
+      _ => _offers,
+    };
+  }
+
+  void setStatusFilter(String filter) {
+    if (_statusFilter == filter) {
+      return;
+    }
+    _statusFilter = filter;
+    notifyListeners();
+  }
 
   bool isDeactivating(String offerId) => _deactivatingIds.contains(offerId);
 

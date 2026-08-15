@@ -8,12 +8,14 @@ class OfferQuestionType {
 }
 
 class OfferQuestion {
+  final String? id;
   final String label;
   final String type;
   final bool required;
   final List<String> options;
 
   const OfferQuestion({
+    this.id,
     required this.label,
     required this.type,
     required this.required,
@@ -26,6 +28,7 @@ class OfferQuestion {
         .toLowerCase();
 
     return OfferQuestion(
+      id: (json['id'] as String?)?.trim(),
       label: json['label'] as String? ?? '',
       type: rawType == 'boolean'
           ? OfferQuestionType.check

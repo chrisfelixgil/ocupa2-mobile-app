@@ -51,7 +51,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('Inicia sesión en Ocupa2'), findsOneWidget);
+    expect(find.text('Bienvenido de nuevo'), findsOneWidget);
 
     router.go(RoutePaths.register);
     await tester.pumpAndSettle();
@@ -61,7 +61,7 @@ void main() {
     router.go(RoutePaths.forgotPassword);
     await tester.pumpAndSettle();
 
-    expect(find.text('Recupera tu contraseña'), findsOneWidget);
+    expect(find.text('Recuperar contraseña'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
 

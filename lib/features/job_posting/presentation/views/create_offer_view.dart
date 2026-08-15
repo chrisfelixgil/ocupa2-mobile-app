@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -11,7 +12,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:ocupa2/app/router/app_routes.dart';
+import 'package:ocupa2/app/theme/app_colors.dart';
+import 'package:ocupa2/app/theme/app_typography.dart';
 import 'package:ocupa2/features/job_posting/data/custom_field_date.dart';
+import 'package:ocupa2/features/job_posting/presentation/widgets/publish_stepper.dart';
 
 import '../../../catalog/data/models/custom_field.dart';
 import '../../../catalog/data/models/job_type.dart';
@@ -71,6 +75,14 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   bool _publishing = false;
   bool _publishedSuccessfully = false;
 
+  /// 0 Información · 1 Detalles · 2 Preguntas · 3 Revisar
+  int _currentStep = 0;
+
+  /// Último paso alcanzado; el stepper puede volver a cualquiera hasta aquí.
+  int _farthestStep = 0;
+
+  bool _pickingImage = false;
+
   @override
   void initState() {
     super.initState();
@@ -119,10 +131,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
       debugPrint('ERROR CARGANDO JOB TYPES: $e');
     }
-  }
-
-  String _formatJobType(String key) {
-    return key.replaceAll('_', ' ');
   }
 
   JobType? get _selectedJobType {
@@ -269,23 +277,35 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       return const SizedBox.shrink();
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        const SizedBox(height: 16),
-        const Text(
-          'Datos adicionales del tipo de trabajo',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        ...jobType.customFields.map(
-          (CustomField field) => Padding(
-            key: ValueKey<String>('${jobType.key}-${field.key}'),
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _buildCustomFieldControl(field, enabled: enabled),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text(
+            'Campos personalizados de ${jobType.label}'.toUpperCase(),
+            style: const TextStyle(
+              color: AppColors.primary,
+              fontSize: 12,
+              fontWeight: AppTypography.bold,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+          ...jobType.customFields.map(
+            (CustomField field) => Padding(
+              key: ValueKey<String>('${jobType.key}-${field.key}'),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildCustomFieldControl(field, enabled: enabled),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -294,58 +314,63 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
     switch (field.type) {
       case 'number':
-        return TextFormField(
-          controller: _customTextControllers[field.key],
-          enabled: enabled,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: InputDecoration(
-            labelText: label,
-            border: const OutlineInputBorder(),
+        return _labeledField(
+          label: label,
+          child: TextFormField(
+            controller: _customTextControllers[field.key],
+            enabled: enabled,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: _figmaDecoration(),
           ),
         );
       case 'date':
         final DateTime? selected = _customDates[field.key];
-        return InkWell(
-          onTap: enabled ? () => _pickCustomDate(field) : null,
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: label,
-              border: const OutlineInputBorder(),
-              suffixIcon: const Icon(Icons.calendar_today),
-              floatingLabelBehavior: FloatingLabelBehavior.always,
-            ),
-            child: Text(
-              selected == null
-                  ? 'Selecciona una fecha'
-                  : CustomFieldDate.toDisplay(selected),
-              style: TextStyle(
-                color: selected == null ? Theme.of(context).hintColor : null,
+        return _labeledField(
+          label: label,
+          child: InkWell(
+            onTap: enabled ? () => _pickCustomDate(field) : null,
+            child: InputDecorator(
+              decoration: _figmaDecoration(
+                prefixIcon: Icons.calendar_today_outlined,
+              ),
+              child: Text(
+                selected == null
+                    ? 'Selecciona una fecha'
+                    : CustomFieldDate.toDisplay(selected),
+                style: TextStyle(
+                  color: selected == null
+                      ? Theme.of(context).hintColor
+                      : AppColors.text,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
         );
       case 'select':
-        return DropdownButtonFormField<String>(
-          initialValue: _customSelectValues[field.key],
-          decoration: InputDecoration(
-            labelText: label,
-            border: const OutlineInputBorder(),
+        return _labeledField(
+          label: label,
+          child: DropdownButtonFormField<String>(
+            initialValue: _customSelectValues[field.key],
+            isExpanded: true,
+            decoration: _figmaDecoration(),
+            hint: const Text('Selecciona una opción'),
+            items: field.options
+                .map(
+                  (String option) => DropdownMenuItem<String>(
+                    value: option,
+                    child: Text(option),
+                  ),
+                )
+                .toList(),
+            onChanged: enabled
+                ? (String? value) {
+                    setState(() {
+                      _customSelectValues[field.key] = value;
+                    });
+                  }
+                : null,
           ),
-          items: field.options
-              .map(
-                (String option) => DropdownMenuItem<String>(
-                  value: option,
-                  child: Text(option),
-                ),
-              )
-              .toList(),
-          onChanged: enabled
-              ? (String? value) {
-                  setState(() {
-                    _customSelectValues[field.key] = value;
-                  });
-                }
-              : null,
         );
       case 'check':
         return CheckboxListTile(
@@ -362,12 +387,12 @@ class _CreateOfferViewState extends State<CreateOfferView> {
               : null,
         );
       default:
-        return TextFormField(
-          controller: _customTextControllers[field.key],
-          enabled: enabled,
-          decoration: InputDecoration(
-            labelText: label,
-            border: const OutlineInputBorder(),
+        return _labeledField(
+          label: label,
+          child: TextFormField(
+            controller: _customTextControllers[field.key],
+            enabled: enabled,
+            decoration: _figmaDecoration(),
           ),
         );
     }
@@ -378,6 +403,11 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   // ============================================================
 
   Future<void> _pickImage() async {
+    if (_pickingImage || _uploadingPhoto) {
+      return;
+    }
+    _pickingImage = true;
+
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
@@ -430,12 +460,25 @@ class _CreateOfferViewState extends State<CreateOfferView> {
 
       _showMessage('No se pudo subir la imagen.');
     } finally {
+      _pickingImage = false;
       if (mounted) {
         setState(() {
           _uploadingPhoto = false;
         });
       }
     }
+  }
+
+  void _removePhoto() {
+    if (_uploadingPhoto || _publishing) {
+      return;
+    }
+
+    setState(() {
+      _photo = null;
+      _photoBytes = null;
+      _photoUrl = null;
+    });
   }
 
   // ============================================================
@@ -704,9 +747,9 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   void _showMessage(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
   // ============================================================
@@ -730,20 +773,23 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     }
   }
 
-  // Update type of a question and clear options if not applicable
   void _updateQuestionType(int index, String type) {
     setState(() {
       _questions[index].type = type;
       if (!_typeSupportsOptions(type)) {
-        for (var ctrl in _questions[index].optionControllers) {
+        for (final TextEditingController ctrl
+            in _questions[index].optionControllers) {
           ctrl.dispose();
         }
         _questions[index].optionControllers.clear();
+      } else {
+        while (_questions[index].optionControllers.length < 2) {
+          _questions[index].optionControllers.add(TextEditingController());
+        }
       }
     });
   }
 
-  // Update required flag
   void _updateQuestionRequired(int index, bool required) {
     setState(() {
       _questions[index].required = required;
@@ -798,107 +844,158 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     });
   }
 
-  Widget _buildQuestionCard(int index) {
-    final question = _questions[index];
+  Widget _buildQuestionCard(int index, {required bool enabled}) {
+    final _OfferQuestionForm question = _questions[index];
+    final String typeLabel =
+        _questionTypeLabels[question.type] ?? question.type;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Pregunta ${index + 1}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => _removeQuestion(index),
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                ),
-              ],
-            ),
-            TextFormField(
-              controller: question.labelController,
-              decoration: const InputDecoration(
-                labelText: 'Texto de la pregunta',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: question.type,
-              decoration: const InputDecoration(
-                labelText: 'Tipo de respuesta',
-                border: OutlineInputBorder(),
-              ),
-              items: _questionTypeLabels.entries
-                  .map(
-                    (entry) => DropdownMenuItem(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              PopupMenuButton<String>(
+                enabled: enabled,
+                onSelected: (String type) => _updateQuestionType(index, type),
+                itemBuilder: (BuildContext context) {
+                  return _questionTypeLabels.entries.map((
+                    MapEntry<String, String> entry,
+                  ) {
+                    return PopupMenuItem<String>(
                       value: entry.key,
                       child: Text(entry.value),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() {
-                  question.type = value;
-                });
-              },
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('¿Es obligatoria?'),
-              value: question.required,
-              onChanged: (value) {
-                setState(() {
-                  question.required = value;
-                });
-              },
-            ),
-            if (_typeSupportsOptions(question.type)) ...[
-              const SizedBox(height: 4),
-              const Text(
-                'Opciones',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              ...List.generate(question.optionControllers.length, (optIndex) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
+                    );
+                  }).toList();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                   child: Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: question.optionControllers[optIndex],
-                          decoration: InputDecoration(
-                            labelText: 'Opción ${optIndex + 1}',
-                            border: const OutlineInputBorder(),
-                          ),
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text(
+                        typeLabel,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 11,
+                          fontWeight: AppTypography.medium,
                         ),
                       ),
-                      IconButton(
-                        onPressed: () => _removeOption(index, optIndex),
-                        icon: const Icon(Icons.close),
+                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 14,
+                        color: AppColors.primary,
                       ),
                     ],
                   ),
-                );
-              }),
-              TextButton.icon(
-                onPressed: () => _addOption(index),
-                icon: const Icon(Icons.add),
-                label: const Text('Agregar opción'),
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: 'Eliminar pregunta',
+                onPressed: enabled ? () => _removeQuestion(index) : null,
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: Color(0xFFEF4444),
+                ),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: question.labelController,
+            enabled: enabled,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: _figmaDecoration().copyWith(
+              hintText: 'Escribe la pregunta para el candidato...',
+            ),
+          ),
+          if (_typeSupportsOptions(question.type)) ...<Widget>[
+            const SizedBox(height: 12),
+            ...List<Widget>.generate(question.optionControllers.length, (
+              int optIndex,
+            ) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: TextFormField(
+                        controller: question.optionControllers[optIndex],
+                        enabled: enabled,
+                        decoration: _figmaDecoration().copyWith(
+                          hintText: 'Opción ${optIndex + 1}',
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: enabled &&
+                              question.optionControllers.length > 2
+                          ? () => _removeOption(index, optIndex)
+                          : null,
+                      icon: const Icon(Icons.close, size: 18),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            TextButton.icon(
+              onPressed: enabled ? () => _addOption(index) : null,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Agregar opción'),
+            ),
           ],
-        ),
+          const SizedBox(height: 4),
+          const Divider(height: 1, color: AppColors.border),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text(
+              'Obligatoria',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 12,
+                fontWeight: AppTypography.regular,
+              ),
+            ),
+            value: question.required,
+            activeThumbColor: AppColors.primary,
+            onChanged: enabled
+                ? (bool value) => _updateQuestionRequired(index, value)
+                : null,
+          ),
+        ],
       ),
     );
   }
@@ -938,38 +1035,29 @@ class _CreateOfferViewState extends State<CreateOfferView> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
+      barrierColor: const Color(0x990F172A),
       builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text('Oferta publicada correctamente'),
-          content: const Text(
-            'El pago de US\$1.00 fue aprobado y tu oferta ya fue publicada.',
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Cerrar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                if (!context.mounted) {
-                  return;
-                }
-                context.goNamed(AppRouteNames.jobPostingMyOffers);
-              },
-              child: const Text('Ver mis publicaciones'),
-            ),
-          ],
+        return _PublishSuccessDialog(
+          onViewPublications: () {
+            Navigator.of(dialogContext).pop();
+            if (!context.mounted) {
+              return;
+            }
+            context.goNamed(AppRouteNames.jobPostingMyOffers);
+          },
+          onClose: () => Navigator.of(dialogContext).pop(),
         );
       },
     );
   }
 
   Future<_PaymentConfirmationResult?> _showCardPaymentDialog() {
-    return showDialog<_PaymentConfirmationResult>(
+    return showModalBottomSheet<_PaymentConfirmationResult>(
       context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: const Color(0x61000000),
+      builder: (BuildContext sheetContext) {
         return const _CardPaymentDialog();
       },
     );
@@ -987,6 +1075,11 @@ class _CreateOfferViewState extends State<CreateOfferView> {
       return;
     }
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_descriptionController.text.trim().isEmpty) {
+      _showMessage('La descripción es obligatoria.');
       return;
     }
 
@@ -1041,14 +1134,6 @@ class _CreateOfferViewState extends State<CreateOfferView> {
         .toList();
 
     final Map<String, dynamic> customAnswers = _buildCustomAnswers();
-
-    final bool continueToPayment = await _confirmPublicationFee();
-    if (!mounted) {
-      return;
-    }
-    if (!continueToPayment) {
-      return;
-    }
 
     final _PaymentConfirmationResult? confirmation =
         await _showCardPaymentDialog();
@@ -1152,6 +1237,254 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   }
 
   // ============================================================
+  // PASOS DEL ASISTENTE
+  // ============================================================
+
+  static const List<String> _monthNames = <String>[
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
+  ];
+
+  InputDecoration _figmaDecoration({IconData? prefixIcon, IconData? suffixIcon}) {
+    return InputDecoration(
+      prefixIcon: prefixIcon == null ? null : Icon(prefixIcon, size: 18),
+      suffixIcon: suffixIcon == null ? null : Icon(suffixIcon, size: 16),
+      contentPadding: const EdgeInsets.all(12),
+    );
+  }
+
+  Widget _labeledField({required String label, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.text,
+            fontSize: 13,
+            fontWeight: AppTypography.medium,
+          ),
+        ),
+        const SizedBox(height: 6),
+        child,
+      ],
+    );
+  }
+
+  String _deadlineLongLabel(DateTime date) {
+    return '${date.day} de ${_monthNames[date.month - 1]}, ${date.year}';
+  }
+
+  String _contractReviewLabel(String? contractType) {
+    switch ((contractType ?? '').toLowerCase()) {
+      case 'temporal':
+        return 'Temporal';
+      case 'fijo':
+        return 'Fijo';
+      case 'horas':
+        return 'Por horas';
+      default:
+        return contractType ?? '';
+    }
+  }
+
+  String _salaryReviewLabel() {
+    final double? amount = double.tryParse(_amountController.text.trim());
+    if (amount == null) {
+      return 'A convenir';
+    }
+
+    final String digits = amount.round().abs().toString();
+    final StringBuffer grouped = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      final int remaining = digits.length - i;
+      if (i > 0 && remaining % 3 == 0) {
+        grouped.write(',');
+      }
+      grouped.write(digits[i]);
+    }
+
+    final String currency = _currencyController.text.trim().toUpperCase();
+    if (currency == 'USD' || currency == 'US\$') {
+      return 'US\$$grouped';
+    }
+    return 'RD\$$grouped';
+  }
+
+  String _questionsReviewLabel() {
+    final int count = _questions
+        .where(
+          (_OfferQuestionForm question) =>
+              question.labelController.text.trim().isNotEmpty,
+        )
+        .length;
+    if (count == 0) {
+      return 'Sin preguntas de filtro';
+    }
+    if (count == 1) {
+      return '1 pregunta de filtro agregada';
+    }
+    return '$count preguntas de filtro agregadas';
+  }
+
+  bool get _hasMapLocation {
+    return _latController.text.trim().isNotEmpty &&
+        _lngController.text.trim().isNotEmpty;
+  }
+
+  String _customFieldReviewText(CustomField field) {
+    switch (field.type) {
+      case 'select':
+        final String? selected = _customSelectValues[field.key];
+        if (selected == null || selected.isEmpty) {
+          return 'Sin seleccionar';
+        }
+        return selected;
+      case 'check':
+        return _customCheckValues[field.key] == true ? 'Sí' : 'No';
+      case 'date':
+        final DateTime? date = _customDates[field.key];
+        if (date == null) {
+          return 'Sin fecha';
+        }
+        return CustomFieldDate.toDisplay(date);
+      default:
+        final String raw = _customTextControllers[field.key]?.text.trim() ?? '';
+        return raw.isEmpty ? 'Sin completar' : raw;
+    }
+  }
+
+  String _questionReviewLine(_OfferQuestionForm question) {
+    final String typeLabel =
+        _questionTypeLabels[question.type] ?? question.type;
+    final String requiredLabel = question.required ? ' · Obligatoria' : '';
+    final String options = _typeSupportsOptions(question.type)
+        ? question.optionControllers
+              .map((TextEditingController c) => c.text.trim())
+              .where((String o) => o.isNotEmpty)
+              .join(', ')
+        : '';
+    final String optionsSuffix = options.isEmpty ? '' : ' ($options)';
+    return '${question.labelController.text.trim()} · $typeLabel$requiredLabel$optionsSuffix';
+  }
+
+  bool _validateStep1() {
+    if (_jobTypeKey == null || _jobTypeKey!.isEmpty) {
+      _showMessage('Selecciona un tipo de trabajo');
+      return false;
+    }
+    if (_contractType == null || _contractType!.isEmpty) {
+      _showMessage('Selecciona un tipo de contrato');
+      return false;
+    }
+
+    final double? amount = double.tryParse(_amountController.text.trim());
+    if (amount == null || amount <= 0) {
+      _showMessage('El salario del trabajo debe ser válido.');
+      return false;
+    }
+    if (_currencyController.text.trim().isEmpty) {
+      _showMessage('Indica la moneda del salario.');
+      return false;
+    }
+    if (_addressController.text.trim().isEmpty) {
+      _showMessage('Indica la dirección del trabajo');
+      return false;
+    }
+    if (_latController.text.trim().isEmpty ||
+        _lngController.text.trim().isEmpty) {
+      _showMessage('Selecciona una ubicación.');
+      return false;
+    }
+    if (_deadline == null) {
+      _showMessage('Selecciona la fecha límite.');
+      return false;
+    }
+
+    final String? customFieldError = _validateCustomFields();
+    if (customFieldError != null) {
+      _showMessage(customFieldError);
+      return false;
+    }
+
+    return true;
+  }
+
+  bool _validateStep2() {
+    if (_descriptionController.text.trim().isEmpty) {
+      _showMessage('La descripción es obligatoria.');
+      return false;
+    }
+    if (_photo == null || _photoUrl == null || _photoUrl!.isEmpty) {
+      _showMessage('Selecciona y espera a que se suba la foto.');
+      return false;
+    }
+    if (_uploadingPhoto) {
+      _showMessage('Espera a que termine de subir la imagen.');
+      return false;
+    }
+    return true;
+  }
+
+  bool _validateStep3() {
+    final String? questionError = _validateAdditionalQuestions();
+    if (questionError != null) {
+      _showMessage(questionError);
+      return false;
+    }
+    return true;
+  }
+
+  void _goNext() {
+    final bool ok = switch (_currentStep) {
+      0 => _formKey.currentState?.validate() == true && _validateStep1(),
+      1 => _validateStep2(),
+      2 => _validateStep3(),
+      _ => true,
+    };
+
+    if (!ok) {
+      return;
+    }
+
+    if (_currentStep < 3) {
+      setState(() {
+        _currentStep += 1;
+        if (_currentStep > _farthestStep) {
+          _farthestStep = _currentStep;
+        }
+      });
+    }
+  }
+
+  void _goBack() {
+    if (_currentStep > 0) {
+      setState(() {
+        _currentStep -= 1;
+      });
+    }
+  }
+
+  void _goToStep(int step) {
+    if (step < 0 || step > _farthestStep || step == _currentStep) {
+      return;
+    }
+    setState(() {
+      _currentStep = step;
+    });
+  }
+
+  // ============================================================
   // BUILD
   // ============================================================
 
@@ -1168,408 +1501,1220 @@ class _CreateOfferViewState extends State<CreateOfferView> {
         _uploadingPhoto ||
         _publishing;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Publicar oferta')),
+    return ScaffoldMessenger(
+      child: Scaffold(
+      backgroundColor: AppColors.surface,
       body: SafeArea(
         child: Form(
           key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              // ==================================================
-              // TIPO DE TRABAJO
-              // ==================================================
-              if (_loadingJobTypes)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator(),
+          child: Column(
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: PublishStepper(
+                  currentStep: _currentStep,
+                  reachableStep: _farthestStep,
+                  onStepSelected: _goToStep,
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                  children: _buildStepChildren(
+                    isLoading: isLoading,
+                    createOfferViewModel: createOfferViewModel,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: const _PublishBottomNav(),
+    ),
+    );
+  }
+
+  List<Widget> _buildStepChildren({
+    required bool isLoading,
+    required CreateOfferViewModel createOfferViewModel,
+  }) {
+    return switch (_currentStep) {
+      0 => _buildStep1(isLoading: isLoading),
+      1 => _buildStep2(isLoading: isLoading),
+      2 => _buildStep3(isLoading: isLoading),
+      _ => _buildStep4(
+        isLoading: isLoading,
+        createOfferViewModel: createOfferViewModel,
+      ),
+    };
+  }
+
+  List<Widget> _buildStep1({required bool isLoading}) {
+    return <Widget>[
+      const Text(
+        'Información básica',
+        style: TextStyle(
+          color: AppColors.text,
+          fontSize: 22,
+          fontWeight: AppTypography.bold,
+        ),
+      ),
+      const SizedBox(height: 4),
+      const Text(
+        'Completa los datos de cabecera para tu oferta de empleo.',
+        style: TextStyle(
+          color: AppColors.text,
+          fontSize: 13,
+          fontWeight: AppTypography.regular,
+        ),
+      ),
+      const SizedBox(height: 20),
+      if (_loadingJobTypes)
+        const Center(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: CircularProgressIndicator(),
+          ),
+        )
+      else if (_jobTypesError != null)
+        Column(
+          children: <Widget>[
+            Text(
+              _jobTypesError!,
+              style: const TextStyle(color: AppColors.error),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: _loadJobTypes,
+              child: const Text('Reintentar'),
+            ),
+          ],
+        )
+      else
+        _labeledField(
+          label: 'Tipo de empleo',
+          child: DropdownButtonFormField<String>(
+            initialValue: _jobTypeKey,
+            isExpanded: true,
+            decoration: _figmaDecoration(),
+            hint: const Text('Selecciona un tipo de empleo'),
+            items: _jobTypes
+                .where((JobType jobType) => jobType.key.isNotEmpty)
+                .map(
+                  (JobType jobType) => DropdownMenuItem<String>(
+                    value: jobType.key,
+                    child: Text(jobType.label),
                   ),
                 )
-              else if (_jobTypesError != null)
-                Column(
-                  children: [
-                    Text(
-                      _jobTypesError!,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton(
-                      onPressed: _loadJobTypes,
-                      child: const Text('Reintentar'),
-                    ),
-                  ],
-                )
-              else
-                DropdownButtonFormField<String>(
-                  initialValue: _jobTypeKey,
-                  decoration: const InputDecoration(
-                    labelText: 'Tipo de trabajo',
-                    border: OutlineInputBorder(),
+                .toList(),
+            onChanged: isLoading ? null : _onJobTypeChanged,
+            validator: (String? value) {
+              if (value == null || value.isEmpty) {
+                return 'Selecciona un tipo de trabajo';
+              }
+              return null;
+            },
+          ),
+        ),
+      const SizedBox(height: 14),
+      _labeledField(
+        label: 'Tipo de contrato',
+        child: DropdownButtonFormField<String>(
+          initialValue: _contractType,
+          isExpanded: true,
+          decoration: _figmaDecoration(),
+          hint: const Text('Selecciona un tipo de contrato'),
+          items: const <DropdownMenuItem<String>>[
+            DropdownMenuItem<String>(
+              value: 'temporal',
+              child: Text('Temporal (Por proyecto)'),
+            ),
+            DropdownMenuItem<String>(value: 'fijo', child: Text('Fijo')),
+            DropdownMenuItem<String>(
+              value: 'horas',
+              child: Text('Por horas'),
+            ),
+          ],
+          onChanged: isLoading
+              ? null
+              : (String? value) {
+                  setState(() {
+                    _contractType = value;
+                  });
+                },
+          validator: (String? value) {
+            if (value == null || value.isEmpty) {
+              return 'Selecciona un tipo de contrato';
+            }
+            return null;
+          },
+        ),
+      ),
+      const SizedBox(height: 14),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Expanded(
+            child: _labeledField(
+              label: 'Salario',
+              child: TextFormField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: _figmaDecoration(),
+                validator: (String? value) {
+                  final double? amount = double.tryParse(value?.trim() ?? '');
+                  if (amount == null || amount <= 0) {
+                    return 'Salario inválido';
+                  }
+                  return null;
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _labeledField(
+              label: 'Moneda',
+              child: DropdownButtonFormField<String>(
+                initialValue: _currencyController.text.trim().isEmpty
+                    ? 'DOP'
+                    : _currencyController.text.trim(),
+                isExpanded: true,
+                decoration: _figmaDecoration(),
+                items: const <DropdownMenuItem<String>>[
+                  DropdownMenuItem<String>(
+                    value: 'DOP',
+                    child: Text('RD\$ (Pesos)'),
                   ),
-                  items: _jobTypes
-                      .where((jobType) => jobType.key.isNotEmpty)
-                      .map(
-                        (jobType) => DropdownMenuItem<String>(
-                          value: jobType.key,
-                          child: Text(_formatJobType(jobType.key)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: isLoading ? null : _onJobTypeChanged,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Selecciona un tipo de trabajo';
-                    }
-
-                    return null;
-                  },
-                ),
-
-              _buildCustomFieldsSection(enabled: !isLoading),
-
-              const SizedBox(height: 12),
-
-              // ==================================================
-              // TIPO DE CONTRATO
-              // ==================================================
-              DropdownButtonFormField<String>(
-                initialValue: _contractType,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo de contrato',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'temporal', child: Text('Temporal')),
-                  DropdownMenuItem(value: 'fijo', child: Text('Fijo')),
-                  DropdownMenuItem(value: 'horas', child: Text('Por horas')),
+                  DropdownMenuItem<String>(
+                    value: 'USD',
+                    child: Text('US\$ (Dólares)'),
+                  ),
                 ],
                 onChanged: isLoading
                     ? null
-                    : (value) {
+                    : (String? value) {
                         setState(() {
-                          _contractType = value;
+                          _currencyController.text = value ?? 'DOP';
                         });
                       },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Selecciona un tipo de contrato';
-                  }
-
-                  return null;
-                },
               ),
-
-              const SizedBox(height: 12),
-
-              // ==================================================
-              // DESCRIPCIÓN
-              // ==================================================
-              TextFormField(
-                controller: _descriptionController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción',
-                  border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 14),
+      _labeledField(
+        label: 'Dirección',
+        child: TextFormField(
+          controller: _addressController,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: _figmaDecoration(prefixIcon: Icons.map_outlined),
+          validator: (String? value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Indica la dirección del trabajo';
+            }
+            return null;
+          },
+        ),
+      ),
+      const SizedBox(height: 14),
+      _labeledField(
+        label: 'Ubicación',
+        child: Column(
+          children: <Widget>[
+            InputDecorator(
+              decoration: _figmaDecoration(
+                prefixIcon: Icons.location_on_outlined,
+              ),
+              child: Text(
+                _hasMapLocation
+                    ? 'Ubicación marcada en el mapa'
+                    : 'Aún no hay un punto en el mapa',
+                style: TextStyle(
+                  color: _hasMapLocation
+                      ? AppColors.text
+                      : Theme.of(context).hintColor,
+                  fontSize: 14,
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Requerido';
-                  }
-
-                  return null;
-                },
               ),
-
-              const SizedBox(height: 12),
-
-              // ==================================================
-              // UBICACIÓN
-              // ==================================================
-              const Text(
-                'Ubicación del trabajo',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-
-              const SizedBox(height: 8),
-
-              TextFormField(
-                controller: _addressController,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'Dirección',
-                  hintText: 'Calle, sector o ciudad',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.location_on),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: isLoading ? null : _useCurrentLocation,
+                    icon: _loadingLocation
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.my_location, size: 18),
+                    label: const Text('Mi ubicación'),
+                  ),
                 ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Indica la dirección del trabajo';
-                  }
-
-                  return null;
-                },
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: isLoading ? null : _selectLocationFromMap,
+                    icon: const Icon(Icons.map_outlined, size: 18),
+                    label: const Text('Seleccionar mapa'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 14),
+      _labeledField(
+        label: 'Fecha límite',
+        child: InkWell(
+          onTap: isLoading ? null : _pickDeadline,
+          child: InputDecorator(
+            decoration: _figmaDecoration(
+              prefixIcon: Icons.calendar_today_outlined,
+            ),
+            child: Text(
+              _deadline == null
+                  ? 'Selecciona una fecha'
+                  : _deadlineLongLabel(_deadline!),
+              style: TextStyle(
+                color: _deadline == null
+                    ? Theme.of(context).hintColor
+                    : AppColors.text,
+                fontSize: 14,
               ),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 14),
+      _buildCustomFieldsSection(enabled: !isLoading),
+      const SizedBox(height: 8),
+      FilledButton(
+        onPressed: isLoading ? null : _goNext,
+        child: const Text('Siguiente'),
+      ),
+    ];
+  }
 
-              const SizedBox(height: 8),
+  List<Widget> _buildStep2({required bool isLoading}) {
+    final bool hasPhoto = _photo != null || _photoBytes != null;
 
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: isLoading ? null : _useCurrentLocation,
-                      icon: _loadingLocation
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.my_location),
-                      label: const Text('Mi ubicación'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: isLoading ? null : _selectLocationFromMap,
-                      icon: const Icon(Icons.map),
-                      label: const Text('Seleccionar mapa'),
-                    ),
-                  ),
-                ],
+    return <Widget>[
+      const Text(
+        'Detalles de la oferta',
+        style: TextStyle(
+          color: AppColors.text,
+          fontSize: 22,
+          fontWeight: AppTypography.bold,
+        ),
+      ),
+      const SizedBox(height: 4),
+      const Text(
+        'Describe las tareas y sube una fotografía para atraer mejores candidatos.',
+        style: TextStyle(
+          color: AppColors.text,
+          fontSize: 13,
+          fontWeight: AppTypography.regular,
+        ),
+      ),
+      const SizedBox(height: 20),
+      _labeledField(
+        label: 'Descripción del empleo',
+        child: TextFormField(
+          controller: _descriptionController,
+          minLines: 5,
+          maxLines: 8,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: _figmaDecoration().copyWith(
+            hintText: 'Describe las tareas, horario y requisitos del puesto...',
+            alignLabelWithHint: true,
+          ),
+          validator: (String? value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Requerido';
+            }
+            return null;
+          },
+        ),
+      ),
+      const SizedBox(height: 20),
+      _labeledField(
+        label: 'Fotografía de la oferta',
+        child: hasPhoto
+            ? _PhotoFilledCard(
+                fileName: _photo ?? 'imagen.jpg',
+                bytes: _photoBytes,
+                uploading: _uploadingPhoto,
+                enabled: !isLoading,
+                onChange: _pickImage,
+                onRemove: _removePhoto,
+              )
+            : _PhotoDropzone(
+                uploading: _uploadingPhoto,
+                enabled: !isLoading,
+                onTap: _pickImage,
               ),
+      ),
+      const SizedBox(height: 20),
+      _buildStepNavRow(
+        isLoading: isLoading,
+        onNext: _goNext,
+      ),
+    ];
+  }
 
-              const SizedBox(height: 12),
+  Widget _buildStepNavRow({
+    required bool isLoading,
+    required VoidCallback onNext,
+    String nextLabel = 'Siguiente',
+  }) {
+    return Row(
+      children: <Widget>[
+        SizedBox(
+          width: 110,
+          child: OutlinedButton(
+            onPressed: isLoading ? null : _goBack,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.text,
+              side: const BorderSide(color: AppColors.border),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: const Text('Anterior'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: FilledButton(
+            onPressed: isLoading ? null : onNext,
+            child: Text(nextLabel),
+          ),
+        ),
+      ],
+    );
+  }
 
-              // ==================================================
-              // LATITUD / LONGITUD
-              // ==================================================
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _latController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Latitud',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _lngController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Longitud',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+  List<Widget> _buildStep3({required bool isLoading}) {
+    return <Widget>[
+      const Text(
+        'Preguntas para candidatos',
+        style: TextStyle(
+          color: AppColors.text,
+          fontSize: 22,
+          fontWeight: AppTypography.bold,
+        ),
+      ),
+      const SizedBox(height: 6),
+      const Text(
+        'Puedes agregar preguntas opcionales para conocer mejor a quienes apliquen.',
+        style: TextStyle(
+          color: AppColors.text,
+          fontSize: 13,
+          height: 1.4,
+          fontWeight: AppTypography.regular,
+        ),
+      ),
+      const SizedBox(height: 20),
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: isLoading ? null : _addQuestion,
+          icon: const Icon(Icons.add, size: 16),
+          label: const Text('Agregar pregunta'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            side: const BorderSide(color: AppColors.primary),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ),
+      if (_questions.isNotEmpty) ...<Widget>[
+        const SizedBox(height: 12),
+        ..._questions.asMap().entries.map(
+          (MapEntry<int, _OfferQuestionForm> entry) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildQuestionCard(entry.key, enabled: !isLoading),
+            );
+          },
+        ),
+      ],
+      const SizedBox(height: 8),
+      _buildStepNavRow(isLoading: isLoading, onNext: _goNext),
+    ];
+  }
 
-              const SizedBox(height: 16),
+  List<Widget> _buildStep4({
+    required bool isLoading,
+    required CreateOfferViewModel createOfferViewModel,
+  }) {
+    const Color payGreen = Color(0xFF16A34A);
+    final String jobTypeLabel = _selectedJobType?.label ?? _jobTypeKey ?? '';
+    final String description = _descriptionController.text.trim().isEmpty
+        ? 'Sin descripción'
+        : _descriptionController.text.trim();
 
-              // ==================================================
-              // MONTO
-              // ==================================================
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Salario del trabajo',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _currencyController,
-                      decoration: const InputDecoration(
-                        labelText: 'Moneda del salario',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // ==================================================
-              // FOTO
-              // ==================================================
-              const Text(
-                'Foto del trabajo',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-
-              const SizedBox(height: 8),
-
-              if (_photoBytes != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+    return <Widget>[
+      const Text(
+        'Revisar oferta',
+        style: TextStyle(
+          color: AppColors.text,
+          fontSize: 22,
+          fontWeight: AppTypography.bold,
+        ),
+      ),
+      const SizedBox(height: 4),
+      const Text(
+        'Confirma los detalles de tu publicación antes de proceder al pago.',
+        style: TextStyle(
+          color: AppColors.text,
+          fontSize: 13,
+          fontWeight: AppTypography.regular,
+        ),
+      ),
+      const SizedBox(height: 20),
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            if (_photoBytes != null) ...<Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 140,
                   child: Image.memory(
                     _photoBytes!,
-                    height: 200,
-                    width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) {
-                      return Container(
-                        height: 200,
-                        width: double.infinity,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                          borderRadius: BorderRadius.circular(12),
+                      return const ColoredBox(
+                        color: AppColors.border,
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          color: AppColors.text,
                         ),
-                        child: const Icon(Icons.image, size: 60),
                       );
                     },
                   ),
                 ),
-
+              ),
+              const SizedBox(height: 12),
+            ],
+            Row(
+              children: <Widget>[
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      jobTypeLabel,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 10,
+                        fontWeight: AppTypography.medium,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _contractReviewLabel(_contractType),
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 11,
+                    fontWeight: AppTypography.regular,
+                  ),
+                ),
+              ],
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(height: 1, color: AppColors.border),
+            ),
+            const Text(
+              'Descripción',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 12,
+                fontWeight: AppTypography.medium,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 14,
+                height: 1.4,
+                fontWeight: AppTypography.regular,
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(height: 1, color: AppColors.border),
+            ),
+            _ReviewDetailRow(
+              icon: Icons.location_on_outlined,
+              label: _addressController.text.trim().isEmpty
+                  ? 'Sin dirección'
+                  : _addressController.text.trim(),
+            ),
+            const SizedBox(height: 8),
+            _ReviewDetailRow(
+              icon: Icons.map_outlined,
+              label: _hasMapLocation
+                  ? 'Ubicación marcada en el mapa'
+                  : 'Sin punto en el mapa',
+            ),
+            const SizedBox(height: 8),
+            _ReviewDetailRow(
+              icon: Icons.calendar_today_outlined,
+              label: _deadline == null
+                  ? 'Sin fecha límite'
+                  : _deadlineLongLabel(_deadline!),
+            ),
+            if (_selectedJobType != null &&
+                _selectedJobType!.customFields.isNotEmpty) ...<Widget>[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(height: 1, color: AppColors.border),
+              ),
+              const Text(
+                'Campos personalizados',
+                style: TextStyle(
+                  color: AppColors.text,
+                  fontSize: 12,
+                  fontWeight: AppTypography.medium,
+                ),
+              ),
               const SizedBox(height: 8),
-
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: isLoading ? null : _pickImage,
-                  icon: _uploadingPhoto
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.photo_library),
-                  label: Text(
-                    _uploadingPhoto
-                        ? 'Subiendo imagen...'
-                        : _photo == null
-                        ? 'Seleccionar foto'
-                        : 'Cambiar foto',
+              ..._selectedJobType!.customFields.map(
+                (CustomField field) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _ReviewDetailRow(
+                    icon: Icons.tune_outlined,
+                    label: '${field.label}: ${_customFieldReviewText(field)}',
                   ),
                 ),
               ),
+            ],
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(height: 1, color: AppColors.border),
+            ),
+            const Text(
+              'Preguntas para candidatos',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 12,
+                fontWeight: AppTypography.medium,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (_questions
+                .where(
+                  (_OfferQuestionForm q) =>
+                      q.labelController.text.trim().isNotEmpty,
+                )
+                .isEmpty)
+              _ReviewDetailRow(
+                icon: Icons.help_outline,
+                label: _questionsReviewLabel(),
+              )
+            else
+              ..._questions
+                  .where(
+                    (_OfferQuestionForm q) =>
+                        q.labelController.text.trim().isNotEmpty,
+                  )
+                  .map(
+                    (_OfferQuestionForm question) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _ReviewDetailRow(
+                        icon: Icons.help_outline,
+                        label: _questionReviewLine(question),
+                        maxLines: 3,
+                      ),
+                    ),
+                  ),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Divider(height: 1, color: AppColors.border),
+            ),
+            const Text(
+              'Pago ofrecido',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 12,
+                fontWeight: AppTypography.medium,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _salaryReviewLabel(),
+              style: const TextStyle(
+                color: payGreen,
+                fontSize: 20,
+                fontWeight: AppTypography.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 14),
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.08),
+          ),
+        ),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'TARIFA DE PUBLICACIÓN',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 12,
+                fontWeight: AppTypography.bold,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              'US\$1.00',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 32,
+                fontWeight: AppTypography.bold,
+              ),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'Esta tarifa es necesaria para publicar la oferta de empleo y mantenerla activa por 30 días.',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 13,
+                height: 1.4,
+                fontWeight: AppTypography.regular,
+              ),
+            ),
+          ],
+        ),
+      ),
+      if (createOfferViewModel.status == CreateOfferStatus.error &&
+          createOfferViewModel.errorMessage != null) ...<Widget>[
+        const SizedBox(height: 12),
+        Text(
+          createOfferViewModel.errorMessage!,
+          style: const TextStyle(color: AppColors.error),
+        ),
+      ],
+      const SizedBox(height: 20),
+      if (isLoading)
+        const Center(child: CircularProgressIndicator())
+      else ...<Widget>[
+        FilledButton(
+          onPressed: _publishedSuccessfully ? null : _submit,
+          child: Text(
+            _publishedSuccessfully
+                ? 'Oferta publicada'
+                : 'Continuar al pago',
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: _goBack,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.text,
+              side: const BorderSide(color: AppColors.border),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: const Text('Anterior'),
+          ),
+        ),
+      ],
+    ];
+  }
 
-              if (_photoUrl != null)
-                const Padding(
-                  padding: EdgeInsets.only(top: 6),
-                  child: Row(
-                    children: [
-                      Icon(Icons.check_circle, size: 18, color: Colors.green),
-                      SizedBox(width: 6),
-                      Text(
-                        'Imagen subida correctamente',
-                        style: TextStyle(color: Colors.green),
+}
+
+class _ReviewDetailRow extends StatelessWidget {
+  const _ReviewDetailRow({
+    required this.icon,
+    required this.label,
+    this.maxLines = 2,
+  });
+
+  final IconData icon;
+  final String label;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon, size: 14, color: AppColors.text),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 13,
+              fontWeight: AppTypography.regular,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PublishBottomNav extends StatelessWidget {
+  const _PublishBottomNav();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: <Widget>[
+              _PublishNavItem(
+                icon: Icons.home_outlined,
+                label: 'Inicio',
+                onTap: () {
+                  context.goNamed(AppRouteNames.home);
+                },
+              ),
+              _PublishNavItem(
+                icon: Icons.search,
+                label: 'Explorar',
+                onTap: () {
+                  context.pushNamed(AppRouteNames.jobSearchExplore);
+                },
+              ),
+              const _PublishNavItem(
+                icon: Icons.add,
+                label: 'Publicar',
+                selected: true,
+                prominent: true,
+              ),
+              _PublishNavItem(
+                icon: Icons.history,
+                label: 'Actividad',
+                onTap: () {
+                  context.pushNamed(AppRouteNames.activityHub);
+                },
+              ),
+              _PublishNavItem(
+                icon: Icons.person_outline,
+                label: 'Perfil',
+                onTap: () {
+                  context.pushNamed(AppRouteNames.profile);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PublishNavItem extends StatelessWidget {
+  const _PublishNavItem({
+    required this.icon,
+    required this.label,
+    this.selected = false,
+    this.prominent = false,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final bool prominent;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = selected ? AppColors.primary : AppColors.text;
+
+    return InkWell(
+      onTap: onTap,
+      child: SizedBox(
+        width: 64,
+        height: 64,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            if (prominent)
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 24, color: AppColors.onPrimary),
+              )
+            else
+              Icon(icon, size: 22, color: color),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: selected
+                    ? AppTypography.medium
+                    : AppTypography.regular,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PhotoDropzone extends StatelessWidget {
+  const _PhotoDropzone({
+    required this.uploading,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final bool uploading;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      child: InkWell(
+        onTap: enabled && !uploading ? onTap : null,
+        borderRadius: BorderRadius.circular(12),
+        child: CustomPaint(
+          painter: const _DashedRRectPainter(
+            color: AppColors.text,
+            radius: 12,
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+              child: Column(
+                children: <Widget>[
+                  if (uploading)
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    const Icon(
+                      Icons.image_outlined,
+                      size: 24,
+                      color: AppColors.text,
+                    ),
+                  const SizedBox(height: 8),
+                  Text(
+                    uploading ? 'Subiendo imagen...' : 'Agregar fotografía',
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 14,
+                      fontWeight: AppTypography.medium,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PhotoFilledCard extends StatelessWidget {
+  const _PhotoFilledCard({
+    required this.fileName,
+    required this.bytes,
+    required this.uploading,
+    required this.enabled,
+    required this.onChange,
+    required this.onRemove,
+  });
+
+  final String fileName;
+  final Uint8List? bytes;
+  final bool uploading;
+  final bool enabled;
+  final VoidCallback onChange;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: <Widget>[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              width: 60,
+              height: 60,
+              child: bytes == null
+                  ? const ColoredBox(
+                      color: AppColors.border,
+                      child: Icon(Icons.image_outlined, color: AppColors.text),
+                    )
+                  : Image.memory(
+                      bytes!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) {
+                        return const ColoredBox(
+                          color: AppColors.border,
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: AppColors.text,
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  fileName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 13,
+                    fontWeight: AppTypography.medium,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (uploading)
+                  const Text(
+                    'Subiendo imagen...',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: AppTypography.medium,
+                    ),
+                  )
+                else
+                  Row(
+                    children: <Widget>[
+                      GestureDetector(
+                        onTap: enabled ? onChange : null,
+                        child: const Text(
+                          'Cambiar',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 12,
+                            fontWeight: AppTypography.medium,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: enabled ? onRemove : null,
+                        child: const Text(
+                          'Eliminar',
+                          style: TextStyle(
+                            color: Color(0xFFEF4444),
+                            fontSize: 12,
+                            fontWeight: AppTypography.medium,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                ),
-
-              if (_photo == null)
-                const Padding(
-                  padding: EdgeInsets.only(top: 4),
-                  child: Text(
-                    'La foto es obligatoria',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
-
-              const SizedBox(height: 16),
-
-              // ==================================================
-              // FECHA
-              // ==================================================
-              InkWell(
-                onTap: isLoading ? null : _pickDeadline,
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Fecha límite',
-                    border: OutlineInputBorder(),
-                    suffixIcon: Icon(Icons.calendar_today),
-                    floatingLabelBehavior: FloatingLabelBehavior.always,
-                  ),
-                  child: Text(
-                    _deadline == null
-                        ? 'Selecciona una fecha'
-                        : CustomFieldDate.toDisplay(_deadline!),
-                    style: TextStyle(
-                      color: _deadline == null
-                          ? Theme.of(context).hintColor
-                          : null,
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // ==================================================
-              // PREGUNTAS ADICIONALES
-              // ==================================================
-              const Text(
-                'Preguntas adicionales (opcional)',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Agrega preguntas que el postulante deberá responder al aplicar.',
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 8),
-
-              ..._questions.asMap().entries.map(
-                (e) => _buildQuestionCard(e.key),
-              ),
-
-              OutlinedButton.icon(
-                onPressed: isLoading ? null : _addQuestion,
-                icon: const Icon(Icons.add),
-                label: const Text('Agregar pregunta'),
-              ),
-
-              const SizedBox(height: 20),
-
-              // ==================================================
-              // ERROR
-              // ==================================================
-              if (createOfferViewModel.status == CreateOfferStatus.error &&
-                  createOfferViewModel.errorMessage != null)
-                Text(
-                  createOfferViewModel.errorMessage!,
-                  style: const TextStyle(color: Colors.red),
-                ),
-
-              const SizedBox(height: 12),
-
-              // ==================================================
-              // BOTÓN PUBLICAR
-              // ==================================================
-              if (isLoading)
-                const Center(child: CircularProgressIndicator())
-              else
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _publishedSuccessfully ? null : _submit,
-                    child: Text(
-                      _publishedSuccessfully
-                          ? 'Oferta publicada'
-                          : 'Publicar oferta',
-                    ),
-                  ),
-                ),
-            ],
+              ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashedRRectPainter extends CustomPainter {
+  const _DashedRRectPainter({required this.color, required this.radius});
+
+  final Color color;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    final RRect rrect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(radius),
+    );
+    final ui.Path path = ui.Path()..addRRect(rrect);
+    const double dash = 6;
+    const double gap = 4;
+    for (final ui.PathMetric metric in path.computeMetrics()) {
+      double distance = 0;
+      while (distance < metric.length) {
+        final double next = (distance + dash).clamp(0, metric.length);
+        canvas.drawPath(metric.extractPath(distance, next), paint);
+        distance += dash + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRRectPainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.radius != radius;
+  }
+}
+
+// ================================================================
+// DIÁLOGO DE ÉXITO AL PUBLICAR
+// ================================================================
+
+class _PublishSuccessDialog extends StatelessWidget {
+  const _PublishSuccessDialog({
+    required this.onViewPublications,
+    required this.onClose,
+  });
+
+  final VoidCallback onViewPublications;
+  final VoidCallback onClose;
+
+  static const Color _successGreen = Color(0xFF16A34A);
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      elevation: 8,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: _successGreen.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle_rounded,
+                color: _successGreen,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Oferta publicada',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 20,
+                fontWeight: AppTypography.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'El pago fue aprobado y tu oferta ya está disponible.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 14,
+                height: 1.5,
+                fontWeight: AppTypography.regular,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: onViewPublications,
+                child: const Text('Ver mis publicaciones'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: TextButton(
+                onPressed: onClose,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.text,
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: AppTypography.medium,
+                  ),
+                ),
+                child: const Text('Cerrar'),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1686,102 +2831,250 @@ class _CardPaymentDialogState extends State<_CardPaymentDialog> {
     );
   }
 
+  InputDecoration _sheetDecoration({Widget? prefixIcon}) {
+    return InputDecoration(
+      prefixIcon: prefixIcon,
+      contentPadding: const EdgeInsets.all(12),
+    );
+  }
+
+  Widget _sheetField({required String label, required Widget child}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.text,
+            fontSize: 13,
+            fontWeight: AppTypography.medium,
+          ),
+        ),
+        const SizedBox(height: 6),
+        child,
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Pago de publicación'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              const Text(
-                'Costo: US\$1.00',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<_TestCard>(
-                value: _selectedCard,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Número de tarjeta',
-                  border: OutlineInputBorder(),
-                ),
-                hint: const Text('Selecciona una tarjeta de prueba'),
-                items: _testCards.map((_TestCard card) {
-                  return DropdownMenuItem<_TestCard>(
-                    value: card,
-                    child: Text(card.label, overflow: TextOverflow.ellipsis),
-                  );
-                }).toList(),
-                onChanged: _applyTestCard,
-                validator: (_TestCard? value) {
-                  if (value == null) {
-                    return 'Selecciona una tarjeta de prueba';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _cardholderController,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre del titular',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
+    const Color secureGreen = Color(0xFF16A34A);
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
-                  Expanded(
-                    child: TextFormField(
-                      controller: _expMonthController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Mes',
-                        border: OutlineInputBorder(),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
+                  const SizedBox(height: 20),
+                  Row(
+                    children: <Widget>[
+                      const Expanded(
+                        child: Text(
+                          'Realizar pago',
+                          style: TextStyle(
+                            color: AppColors.text,
+                            fontSize: 18,
+                            fontWeight: AppTypography.bold,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: secureGreen.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Icon(
+                              Icons.lock_outline,
+                              size: 12,
+                              color: secureGreen,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Seguro',
+                              style: TextStyle(
+                                color: secureGreen,
+                                fontSize: 11,
+                                fontWeight: AppTypography.medium,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: const Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            'Tarifa de publicación',
+                            style: TextStyle(
+                              color: AppColors.text,
+                              fontSize: 14,
+                              fontWeight: AppTypography.regular,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'US\$1.00',
+                          style: TextStyle(
+                            color: AppColors.text,
+                            fontSize: 16,
+                            fontWeight: AppTypography.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _sheetField(
+                    label: 'Número de tarjeta',
+                    child: DropdownButtonFormField<_TestCard>(
+                      initialValue: _selectedCard,
+                      isExpanded: true,
+                      decoration: _sheetDecoration(
+                        prefixIcon: const Icon(
+                          Icons.credit_card_outlined,
+                          size: 18,
+                        ),
+                      ),
+                      hint: const Text('Selecciona una tarjeta de prueba'),
+                      items: _testCards.map((_TestCard card) {
+                        return DropdownMenuItem<_TestCard>(
+                          value: card,
+                          child: Text(
+                            card.label,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: _applyTestCard,
+                      validator: (_TestCard? value) {
+                        if (value == null) {
+                          return 'Selecciona una tarjeta de prueba';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _sheetField(
+                    label: 'Nombre del titular',
                     child: TextFormField(
-                      controller: _expYearController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Año',
-                        border: OutlineInputBorder(),
+                      controller: _cardholderController,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: _sheetDecoration().copyWith(
+                        hintText: 'JUAN PEREZ',
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _cvvController,
-                      readOnly: true,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'CVV',
-                        border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Expanded(
+                        child: _sheetField(
+                          label: 'MM',
+                          child: TextFormField(
+                            controller: _expMonthController,
+                            readOnly: true,
+                            decoration: _sheetDecoration().copyWith(
+                              hintText: 'MM',
+                            ),
+                          ),
+                        ),
                       ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _sheetField(
+                          label: 'YYYY',
+                          child: TextFormField(
+                            controller: _expYearController,
+                            readOnly: true,
+                            decoration: _sheetDecoration().copyWith(
+                              hintText: 'YYYY',
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _sheetField(
+                          label: 'CVV',
+                          child: TextFormField(
+                            controller: _cvvController,
+                            readOnly: true,
+                            obscureText: true,
+                            decoration: _sheetDecoration().copyWith(
+                              hintText: '123',
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: _submit,
+                    child: const Text('Pagar US\$1.00 y publicar'),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.text,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Cancelar'),
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('Pagar US\$1.00')),
-      ],
     );
   }
 }
@@ -1793,9 +3086,9 @@ class _CardPaymentDialogState extends State<_CardPaymentDialog> {
 /// Etiquetas legibles para cada valor de OfferQuestionType
 /// (definido en data/models/offer_question.dart).
 const Map<String, String> _questionTypeLabels = {
-  OfferQuestionType.text: 'Texto',
+  OfferQuestionType.text: 'Texto libre',
   OfferQuestionType.date: 'Fecha',
-  OfferQuestionType.select: 'Selección',
+  OfferQuestionType.select: 'Selección múltiple',
   OfferQuestionType.check: 'Casilla de verificación',
 };
 

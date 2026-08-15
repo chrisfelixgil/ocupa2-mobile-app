@@ -7,6 +7,8 @@ class Experience {
     required this.description,
     this.jobTypeKey,
     this.certificateImage,
+    this.contractType,
+    this.duration,
   });
 
   final String id;
@@ -14,6 +16,20 @@ class Experience {
   final String description;
   final String? jobTypeKey;
   final String? certificateImage;
+  final String? contractType;
+  final String? duration;
+
+  String get metaLabel {
+    final String contract = _contractLabel(contractType);
+    final String time = duration?.trim() ?? '';
+    if (contract.isNotEmpty && time.isNotEmpty) {
+      return '$contract · $time';
+    }
+    if (contract.isNotEmpty) {
+      return contract;
+    }
+    return time;
+  }
 
   factory Experience.fromJson(Object? json) {
     final Map<String, dynamic> map = requireJsonObject(
@@ -44,12 +60,29 @@ class Experience {
     final String safeTitle = titleValue.isNotEmpty ? titleValue : 'Experiencia profesional';
     final String? safeImage = imageValue != null && imageValue.isNotEmpty ? imageValue : null;
 
+    final Object? rawYears = map['years'] ?? map['yearsOfExperience'];
+    final String? yearsLabel = rawYears is num
+        ? (rawYears == 1 ? '1 año' : '${rawYears.round()} años')
+        : null;
+
     return Experience(
       id: (map['id'] as String?)?.trim() ?? 'experience-${DateTime.now().microsecondsSinceEpoch}',
       title: safeTitle,
       description: rawDescription?.trim() ?? '',
       jobTypeKey: (map['jobTypeKey'] as String?)?.trim(),
       certificateImage: safeImage,
+      contractType: (map['contractType'] as String?)?.trim(),
+      duration: (map['duration'] as String?)?.trim() ?? yearsLabel,
     );
   }
+}
+
+String _contractLabel(String? value) {
+  return switch ((value ?? '').toLowerCase().trim()) {
+    'fixed' || 'fijo' => 'Fijo',
+    'hourly' || 'por_horas' || 'por-horas' => 'Por horas',
+    'temporary' || 'temporal' => 'Temporal',
+    '' => '',
+    _ => value!.trim(),
+  };
 }

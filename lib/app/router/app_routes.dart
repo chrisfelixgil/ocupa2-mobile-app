@@ -9,9 +9,15 @@ abstract final class AppRouteNames {
   static const String about = 'about';
 
   // my_activity
+  static const String profile = 'profile';
+  static const String editProfile = 'edit-profile';
   static const String myExperiences = 'my-experiences';
+  static const String activityHub = 'activity-hub';
   static const String myApplications = 'my-applications';
+  static const String myApplicationDetail = 'my-application-detail';
   static const String myOffers = 'my-offers';
+  static const String applicantsList = 'applicants-list';
+  static const String applicantDetail = 'applicant-detail';
   static const String myContracts = 'my-contracts';
   static const String contractDetail = 'contract-detail';
 

@@ -9,9 +9,18 @@ abstract final class RoutePaths {
   static const String about = '/about';
 
   // my_activity
+  static const String activityHub = '/my-activity';
+  static const String profile = '/profile';
+  static const String editProfile = '/profile/edit';
   static const String myExperiences = '/my-activity/experiences';
   static const String myApplications = '/my-activity/applications';
+  static const String myApplicationDetailPattern =
+      '/my-activity/applications/:id';
   static const String myOffers = '/my-activity/offers';
+  static const String applicantsListPattern =
+      '/my-activity/offers/:offerId/applicants';
+  static const String applicantDetailPattern =
+      '/my-activity/offers/:offerId/applicants/:applicationId';
   static const String myContracts = '/my-activity/contracts';
   static const String contractDetailPattern = '/my-activity/contracts/:id';
 
