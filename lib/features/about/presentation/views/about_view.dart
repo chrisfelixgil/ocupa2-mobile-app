@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:ocupa2/app/router/app_routes.dart';
+import 'package:ocupa2/core/widgets/app_bottom_nav.dart';
 import 'package:ocupa2/app/theme/app_colors.dart';
 import 'package:ocupa2/app/theme/app_typography.dart';
 import 'package:ocupa2/core/utils/app_url_launcher.dart';
@@ -16,7 +15,9 @@ class AboutView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      bottomNavigationBar: const _AboutBottomNav(),
+      bottomNavigationBar: const AppBottomNav(
+        selected: AppBottomNavTab.profile,
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -166,125 +167,6 @@ class AboutView extends StatelessWidget {
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AboutBottomNav extends StatelessWidget {
-  const _AboutBottomNav();
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: <Widget>[
-              _NavItem(
-                icon: Icons.home_outlined,
-                label: 'Inicio',
-                onTap: () => _goNamed(context, AppRouteNames.home),
-              ),
-              _NavItem(
-                icon: Icons.search,
-                label: 'Explorar',
-                onTap: () =>
-                    _pushNamed(context, AppRouteNames.jobSearchExplore),
-              ),
-              _NavItem(
-                icon: Icons.add,
-                label: 'Publicar',
-                prominent: true,
-                onTap: () =>
-                    _pushNamed(context, AppRouteNames.jobPostingCreate),
-              ),
-              _NavItem(
-                icon: Icons.history,
-                label: 'Actividad',
-                onTap: () => _pushNamed(context, AppRouteNames.activityHub),
-              ),
-              _NavItem(
-                icon: Icons.person_outline,
-                label: 'Perfil',
-                selected: true,
-                onTap: () => _goNamed(context, AppRouteNames.profile),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _goNamed(BuildContext context, String name) {
-    GoRouter.maybeOf(context)?.goNamed(name);
-  }
-
-  void _pushNamed(BuildContext context, String name) {
-    GoRouter.maybeOf(context)?.pushNamed(name);
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    this.selected = false,
-    this.prominent = false,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final bool prominent;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color color = selected ? AppColors.primary : AppColors.text;
-
-    return InkWell(
-      onTap: onTap,
-      child: SizedBox(
-        width: 64,
-        height: 64,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            if (prominent)
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Icon(icon, size: 24, color: AppColors.onPrimary),
-              )
-            else
-              Icon(icon, size: 22, color: color),
-            if (!prominent) ...<Widget>[
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 10,
-                  fontWeight: selected ? FontWeight.w600 : AppTypography.medium,
-                ),
-              ),
-            ],
           ],
         ),
       ),
