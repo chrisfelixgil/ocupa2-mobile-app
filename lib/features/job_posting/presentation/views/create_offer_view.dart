@@ -747,9 +747,17 @@ class _CreateOfferViewState extends State<CreateOfferView> {
   void _showMessage(String message) {
     if (!mounted) return;
 
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-    messenger.hideCurrentSnackBar();
-    messenger.showSnackBar(SnackBar(content: Text(message)));
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+
+    try {
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      debugPrint('No se pudo mostrar el SnackBar: $e');
+    }
   }
 
   // ============================================================
